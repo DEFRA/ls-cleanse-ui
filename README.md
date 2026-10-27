@@ -1,8 +1,8 @@
-# CDP Node.js Frontend Template
+# ls-cleanse-ui
 
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_cdp-node-frontend-template&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DEFRA_cdp-node-frontend-template)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_cdp-node-frontend-template&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DEFRA_cdp-node-frontend-template)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_cdp-node-frontend-template&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DEFRA_cdp-node-frontend-template)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_ls-cleanse-ui&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DEFRA_ls-cleanse-ui)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_ls-cleanse-ui&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DEFRA_ls-cleanse-ui)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_ls-cleanse-ui&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DEFRA_ls-cleanse-ui)
 
 Core delivery platform Node.js Frontend Template.
 
@@ -36,7 +36,7 @@ Please install Node Version Manager [nvm](https://github.com/creationix/nvm)
 To use the correct version of Node.js for this application, via nvm:
 
 ```bash
-cd cdp-node-frontend-template
+cd ls-cleanse-ui
 nvm use
 ```
 
@@ -141,18 +141,18 @@ git config --global core.autocrlf false
 
 > [!TIP]
 > For Apple Silicon users, you may need to add `--platform linux/amd64` to the `docker run` command to ensure
-> compatibility fEx: `docker build --platform=linux/arm64 --no-cache --tag cdp-node-frontend-template`
+> compatibility fEx: `docker build --platform=linux/arm64 --no-cache --tag ls-cleanse-ui`
 
 Build:
 
 ```bash
-docker build --target development --no-cache --tag cdp-node-frontend-template:development .
+docker build --target development --no-cache --tag ls-cleanse-ui:development .
 ```
 
 Run:
 
 ```bash
-docker run -p 3000:3000 cdp-node-frontend-template:development
+docker run -p 3000:3000 ls-cleanse-ui:development
 ```
 
 ### Production image
@@ -160,13 +160,13 @@ docker run -p 3000:3000 cdp-node-frontend-template:development
 Build:
 
 ```bash
-docker build --no-cache --tag cdp-node-frontend-template .
+docker build --no-cache --tag ls-cleanse-ui .
 ```
 
 Run:
 
 ```bash
-docker run -p 3000:3000 cdp-node-frontend-template
+docker run -p 3000:3000 ls-cleanse-ui
 ```
 
 ### Docker Compose
