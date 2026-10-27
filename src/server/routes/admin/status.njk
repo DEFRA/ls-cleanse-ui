@@ -1,0 +1,176 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% macro summaryRow(key, value, secondary) %}
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">{{ key }}</dt>
+    <dd class="govuk-summary-list__value">
+      {{ value }}
+      {% if secondary %}<span class="app-secondary-text">{{ secondary }}</span>{% endif %}
+    </dd>
+  </div>
+{% endmacro %}
+
+{% macro runningSince(startedAt, uptimeSeconds) %}
+  {{- startedAt | govukDateTime }} ({{ uptimeSeconds | duration }})
+{%- endmacro %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ text: "Back to admin", href: "/admin" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if notification %}
+      {{ govukNotificationBanner({
+        type: "success",
+        titleText: "Success",
+        text: notification
+      }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">{{ groupId }}</span>
+    <h1 class="govuk-heading-l">Status</h1>
+
+    <p class="govuk-body app-status-summary">
+      {{ govukTag({ text: summary.text, classes: "govuk-tag--" + summary.colour }) }}
+      Checked {{ checkedAt | govukDateTime }}.
+      <a class="govuk-link" href="/admin/status">Check again</a>
+    </p>
+
+    {% if not reachedBackend %}
+      {{ govukInsetText({
+        text: "The Cleanse backend did not answer, so everything it would have reported is unknown."
+      }) }}
+    {% endif %}
+
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-table__caption--m">Checks</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header app-status__symbol">
+            <span class="govuk-visually-hidden">Status</span>
+          </th>
+          <th scope="col" class="govuk-table__header">Check</th>
+          <th scope="col" class="govuk-table__header">Detail</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for check in checks %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell app-status__symbol">
+              <span class="app-status app-status--{{ check.stateDetail.id }}" role="img"
+                    aria-label="{{ check.stateDetail.label }}">{{ check.stateDetail.symbol }}</span>
+            </td>
+            <th scope="row" class="govuk-table__header">{{ check.name }}</th>
+            <td class="govuk-table__cell app-status__detail">
+              {% if check.value %}{{ check.value }}{% endif %}
+              {% if check.detail %}
+                <span class="app-secondary-text">{{ check.detail }}</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2 class="govuk-heading-m">Front end</h2>
+    <dl class="govuk-summary-list">
+      {{ summaryRow("Service", frontEnd.name) }}
+      {{ summaryRow("Version", frontEnd.version or "Not set", "From SERVICE_VERSION, which CDP sets on deployment." if not frontEnd.version) }}
+      {{ summaryRow("Environment", frontEnd.environment) }}
+      {{ summaryRow("Running since", runningSince(frontEnd.startedAt, frontEnd.uptimeSeconds)) }}
+      {{ summaryRow("Node.js", frontEnd.node) }}
+      {{ summaryRow("Sessions", "In an encrypted cookie, so no session store is needed") }}
+      {{ summaryRow("Backend", frontEnd.backendUrl, frontEnd.backendAuth) }}
+    </dl>
+
+    <h2 class="govuk-heading-m">Back end</h2>
+    {% if backEnd %}
+      <dl class="govuk-summary-list">
+        {{ summaryRow("Service", backEnd.name) }}
+        {{ summaryRow("Version", backEnd.version or "Not set", "From SERVICE_VERSION, which CDP sets on deployment." if not backEnd.version) }}
+        {{ summaryRow("Environment", backEnd.environment or "Not set") }}
+        {% if backEnd.startedAt %}
+          {{ summaryRow("Running since", runningSince(backEnd.startedAt, backEnd.uptimeSeconds)) }}
+        {% endif %}
+        {{ summaryRow("Runtime", backEnd.runtime) }}
+      </dl>
+    {% elif reachedBackend %}
+      <p class="govuk-body">This version of the backend does not say which build it is.</p>
+    {% else %}
+      <p class="govuk-body">Unknown, because the backend did not answer.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-m">Last database reset</h2>
+    <p class="govuk-body">
+      {% if lastResetAtUtc %}
+        {{ lastResetAtUtc | govukDateTime }}
+      {% elif reachedBackend %}
+        Never reset.
+      {% else %}
+        Unknown.
+      {% endif %}
+    </p>
+
+  </div>
+</div>
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-full">
+
+    <h2 class="govuk-heading-m">Issues</h2>
+
+    {% if matrix %}
+      <p class="govuk-body">
+        {{ issues.total }} issue{{ "s" if issues.total != 1 }} in <b>{{ groupId }}</b>.
+        Status is set by the rules; workflow status is set by caseworkers.
+      </p>
+
+      <table class="govuk-table app-table--compact">
+        <caption class="govuk-table__caption govuk-table__caption--s">
+          Issue counts by status and workflow status
+        </caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Workflow status</th>
+            {% for column in matrix.columns %}
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ column.name }}</th>
+            {% endfor %}
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Total</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in matrix.rows %}
+            <tr class="govuk-table__row">
+              <th scope="row" class="govuk-table__header">{{ row.workflow.name }}</th>
+              {% for cell in row.cells %}
+                <td class="govuk-table__cell govuk-table__cell--numeric">{{ cell.count }}</td>
+              {% endfor %}
+              <td class="govuk-table__cell govuk-table__cell--numeric"><b>{{ row.total }}</b></td>
+            </tr>
+          {% endfor %}
+          <tr class="govuk-table__row">
+            <th scope="row" class="govuk-table__header">Total</th>
+            {% for column in matrix.columnTotals %}
+              <td class="govuk-table__cell govuk-table__cell--numeric"><b>{{ column.count }}</b></td>
+            {% endfor %}
+            <td class="govuk-table__cell govuk-table__cell--numeric"><b>{{ issues.total }}</b></td>
+          </tr>
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">Issue counts are unknown because the backend did not answer.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

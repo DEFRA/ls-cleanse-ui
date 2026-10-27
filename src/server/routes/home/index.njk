@@ -1,16 +1,91 @@
 {% extends 'layouts/page.njk' %}
 
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
 {% block content %}
-  {{ appHeading({
-    text: heading,
-    caption: "ls-cleanse-ui"
-  }) }}
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <div class="govuk-body" data-testid="app-page-body">
-        <p></p>
-      </div>
+      <h1 class="govuk-heading-l">Cleanse</h1>
+
+      <p class="govuk-body-l">
+        Work through the differences the overnight rules find between CTS and SAM.
+      </p>
+
+      <p class="govuk-body">
+        The rules run every night and raise an issue for each record that does not match.
+        Your job is to decide what to do with each one.
+      </p>
+
+      {{ govukButton({
+        text: "Start triaging",
+        href: "/issues",
+        isStartButton: true
+      }) }}
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      <h2 class="govuk-heading-m">Active issues by status</h2>
+
+      {% if activeIssues == 0 %}
+
+        {{ govukInsetText({
+          text: "There are no active issues. Either the rules have not run yet, or everything they found has been dealt with."
+        }) }}
+
+      {% else %}
+
+        <ul class="govuk-list app-card-row">
+          {% for status in counts %}
+            <li>
+              <a class="app-card" href="/issues?filtered=true&amp;status=active&amp;workflowStatus={{ status.id }}">
+                <span class="app-card__count">{{ status.count }}</span>
+                <span class="app-card__label">{{ status.name }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <p class="govuk-body">
+          {{ openCount }} of {{ activeIssues }} active issues still need work.
+          {% if inactiveIssues %}
+            A further {{ inactiveIssues }} are inactive &mdash; the rules no longer find a problem
+            with those records, so they do not need working on.
+          {% endif %}
+        </p>
+
+      {% endif %}
+
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h2 class="govuk-heading-m">Latest rule run</h2>
+
+      {% if latestRun %}
+        <p class="govuk-body app-tag-row">
+          {{ govukTag({
+            text: latestRun.stateDetail.name,
+            classes: "govuk-tag--" + latestRun.stateDetail.colour
+          }) }}
+          <span class="app-secondary-text">Started {{ latestRun.startedAtUtc | govukDateTime }}</span>
+        </p>
+
+        <p class="govuk-body">
+          Checked {{ latestRun.recordsProcessed }} records and raised
+          {{ latestRun.issuesCreated }} new {{ "issue" if latestRun.issuesCreated == 1 else "issues" }}.
+        </p>
+      {% else %}
+        <p class="govuk-body">The rules have not run yet.</p>
+      {% endif %}
+
     </div>
   </div>
 

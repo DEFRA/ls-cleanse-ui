@@ -1,31 +1,24 @@
-// CSRF protection using @hapi/crumb.
-//
-// Crumb generates a unique token per request and validates it on POST
-// submissions. This prevents cross-site request forgery attacks where
-// a malicious site could trick a user's browser into submitting the
-// cookie consent form.
-//
-// HOW IT WORKS:
-// 1. Crumb sets an httpOnly cookie containing the CSRF token
-// 2. The token is made available in templates as {{ crumb }}
-// 3. Forms include it as a hidden input: <input name="crumb" value="{{ crumb }}">
-// 4. On POST, Crumb checks the submitted token matches the cookie
-// 5. If they don't match, the request is rejected with 403 Forbidden
-//
-// For JSON (async) requests from JavaScript, the crumb is sent in the
-// request body — the client reads it from a data-crumb attribute on
-// the cookie banner element.
+import crumb from '@hapi/crumb'
 
-import Crumb from '@hapi/crumb'
 import { config } from '#/config/config.js'
 
+/**
+ * CSRF protection for the POST forms every action goes through.
+ *
+ * `restful` is deliberately off: the service has to work without JavaScript, so the token
+ * travels as a hidden field rather than a header, and the crumb is exposed to Nunjucks so each
+ * form can render it.
+ */
 export const csrf = {
-  plugin: Crumb,
+  plugin: crumb,
   options: {
+    key: 'crumb',
     cookieOptions: {
-      // Only set Secure flag in production (HTTPS).
-      // In development (HTTP), Secure cookies won't be sent.
-      isSecure: config.get('isProduction')
-    }
+      isSecure: config.get('session.cookie.secure'),
+      isHttpOnly: true,
+      isSameSite: 'Lax',
+      path: '/'
+    },
+    logUnauthorized: true
   }
 }

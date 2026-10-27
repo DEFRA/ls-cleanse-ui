@@ -1,0 +1,57 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/password-input/macro.njk" import govukPasswordInput %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if notification %}
+      {{ govukNotificationBanner({
+        type: "success",
+        titleText: "Success",
+        text: notification
+      }) }}
+    {% endif %}
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#password" }]
+      }) }}
+    {% endif %}
+
+    <h1 class="govuk-heading-l">{{ pageTitle }}</h1>
+
+    {% if unavailable %}
+      {{ govukWarningText({
+        text: unavailable,
+        iconFallbackText: "Warning"
+      }) }}
+    {% else %}
+      <p class="govuk-body">{{ lead }}</p>
+
+      <form method="post" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+
+        {{ govukPasswordInput({
+          id: "password",
+          name: "password",
+          label: { text: label, classes: "govuk-label--s" },
+          autocomplete: "current-password",
+          errorMessage: { text: error } if error
+        }) }}
+
+        {{ govukButton({ text: "Sign in" }) }}
+      </form>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

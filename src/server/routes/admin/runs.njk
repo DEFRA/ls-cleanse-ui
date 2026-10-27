@@ -1,0 +1,119 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ text: "Back to admin", href: "/admin" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "The run could not be started",
+        errorList: [{ text: error }]
+      }) }}
+    {% endif %}
+
+    {% if notification %}
+      {{ govukNotificationBanner({
+        type: "success",
+        titleText: "Success",
+        text: notification
+      }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">{{ groupId }}</span>
+    <h1 class="govuk-heading-l">Runs</h1>
+
+    <p class="govuk-body">
+      The rules run automatically every night. Start one by hand when you need the issue list
+      brought up to date sooner.
+    </p>
+
+    <form method="post">
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+      {{ govukButton({ text: "Start a rule run", disabled: inFlight }) }}
+    </form>
+
+    {% if inFlight %}
+      <p class="govuk-body">
+        A run is in progress.
+        <a class="govuk-link govuk-link--no-visited-state" href="/admin/runs">Refresh this page</a>
+        to see how far it has got.
+      </p>
+    {% endif %}
+
+  </div>
+</div>
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-full">
+
+    <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
+      {{ total }} run{{ "s" if total != 1 }}
+    </h2>
+
+    {% if runs | length %}
+      <table class="govuk-table app-table--compact">
+        <caption class="govuk-visually-hidden">Rule runs, newest first</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Started</th>
+            <th scope="col" class="govuk-table__header">State</th>
+            <th scope="col" class="govuk-table__header">Progress</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Raised</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Reactivated</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Closed</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for run in runs %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">
+                <a class="govuk-link govuk-link--no-visited-state" href="/admin/runs/{{ run.runId | urlencode }}">
+                  {{ run.startedAtUtc | govukDateTime }}
+                </a>
+                {% if run.failureMessage %}
+                  <span class="app-secondary-text">{{ run.failureMessage }}</span>
+                {% elif run.abandonReason %}
+                  <span class="app-secondary-text">{{ run.abandonReason }}</span>
+                {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                {{ govukTag({
+                  text: run.stateDetail.name,
+                  classes: "govuk-tag--" + run.stateDetail.colour
+                }) }}
+              </td>
+              <td class="govuk-table__cell">
+                {{ run.progressPercent | round }}%
+                <span class="app-secondary-text">{{ run.recordsProcessed }} of {{ run.recordsTotal }}</span>
+              </td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ run.issuesCreated }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ run.issuesReactivated }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ run.issuesDeactivated }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if pagination %}
+        {{ govukPagination(pagination) }}
+      {% endif %}
+    {% else %}
+      <p class="govuk-body">No runs have been recorded yet.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

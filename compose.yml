@@ -1,94 +1,38 @@
-version: '3.4'
+# Runs ls-cleanse-ui the way CDP does: the production image, NODE_ENV=production and ECS JSON logs.
+# Start it with ./dev-docker-up.ps1, which picks the backend:
+#   -Backend local  the backend built from ../ls-cleanse-api, with its database and S3 emulator, all in
+#                   this one stack; compose.local-backend.yml adds them. The default.
+#   -Backend dev    cleanse in CDP's dev environment, through CDP's developer ephemeral gateway
+# Host port 3000 can be moved with CLEANSE_APP_PORT.
+name: ls-cleanse-ui
+
 services:
-  floci:
-    image: hectorvent/floci:latest-aws
-    ports:
-      - '4566:4566'
-    env_file:
-      - 'compose/aws.env'
-    environment:
-      FLOCI_DEFAULT_REGION: eu-west-2
-    volumes:
-      - ./compose/floci/start.d:/etc/floci/init/start.d:ro
-    networks:
-      - cdp-tenant
-
-  redis:
-    image: redis:7.2.3-alpine3.18
-    ports:
-      - '6379:6379'
-    networks:
-      - cdp-tenant
-
-  mongodb:
-    image: mongo:7.0.28
-    networks:
-      - cdp-tenant
-    ports:
-      - '27017:27017'
-    volumes:
-      - ./compose/mongo:/docker-entrypoint-initdb.d:ro
-      - mongodb-data:/data
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.hello().ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-
-  ################################################################################
-
-  your-frontend:
+  ls-cleanse-ui:
     build: ./
     ports:
-      - '3000:3000'
-    links:
-      - 'floci:floci'
-      - 'redis:redis'
-    depends_on:
-      floci:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    env_file:
-      - 'compose/aws.env'
+      - '${CLEANSE_APP_PORT:-3000}:3000'
     environment:
-      PORT: 3000
-      NODE_ENV: production
-      REDIS_HOST: redis
-      LOG_FORMAT: pino-pretty
-      SESSION_COOKIE_SECURE: false
-      USE_SINGLE_INSTANCE_CACHE: true
-      REDIS_TLS: false
-    networks:
-      - cdp-tenant
-
-  # your-backend:
-  #   image: defradigital/your-backend:${YOUR_BACKEND_VERSION:-latest}
-  #   ports:
-  #     - '3555:3555'
-  #   links:
-  #     - 'foci:floci'
-  #     - 'mongodb:mongodb'
-  #   depends_on:
-  #     floci:
-  #       condition: service_healthy
-  #     mongodb:
-  #       condition: service_started
-  #   env_file:
-  #     - 'compose/aws.env'
-  #   environment:
-  #     PORT: 3001
-  #     NODE_ENV: development
-  #     MONGO_URI: mongodb://mongodb:27017/
-  #   networks:
-  #     - cdp-tenant
-
-################################################################################
-
-volumes:
-  mongodb-data:
-
-networks:
-  cdp-tenant:
-    driver: bridge
+      # Plain http locally, so the session and CSRF cookies cannot be marked Secure.
+      SESSION_COOKIE_SECURE: 'false'
+      SESSION_COOKIE_PASSWORD: ${SESSION_COOKIE_PASSWORD:?Set SESSION_COOKIE_PASSWORD in .env}
+      AUTH_MODE: ${AUTH_MODE:-password}
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI:-http://localhost:3000/auth/entra/callback}
+      ENTRA_POST_LOGOUT_REDIRECT_URI: ${ENTRA_POST_LOGOUT_REDIRECT_URI:-http://localhost:3000/login}
+      CLEANSE_API_URL: ${CLEANSE_API_URL:-http://ls-cleanse-api:8085}
+      # The production default is an STS web identity token, which only CDP can issue.
+      CLEANSE_API_AUTH: apiKey
+      CLEANSE_API_KEY: ${CLEANSE_API_KEY:-local-development-key}
+      # Only set for -Backend dev: the developer key the CDP gateway expects as x-api-key.
+      CLEANSE_GATEWAY_KEY: ${CLEANSE_GATEWAY_KEY:-}
+      # Local startup reads and persists these in the ignored .env file.
+      PASSWORD: ${PASSWORD:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:3000/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s

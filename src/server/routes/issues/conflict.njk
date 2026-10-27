@@ -1,0 +1,28 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    <span class="govuk-caption-l">CPH {{ issue.cph }}</span>
+    <h1 class="govuk-heading-l">This issue has changed</h1>
+
+    {{ govukWarningText({
+      text: "Someone else, or the overnight rule run, changed this issue while you had it open. Nothing you just did has been saved.",
+      iconFallbackText: "Warning"
+    }) }}
+
+    <p class="govuk-body">
+      Open the issue again to see its current state, then decide what to do.
+    </p>
+
+    {{ govukButton({ text: "Back to the issue", href: "/issues/" + issue.id }) }}
+
+  </div>
+</div>
+
+{% endblock %}

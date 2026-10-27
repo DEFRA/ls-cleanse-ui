@@ -2,7 +2,6 @@ import { vi } from 'vitest'
 
 const mockReadFileSync = vi.fn()
 const mockLoggerError = vi.fn()
-const mockLoggerWarn = vi.fn()
 
 vi.mock('node:fs', async () => {
   const nodeFs = await import('node:fs')
@@ -13,7 +12,7 @@ vi.mock('node:fs', async () => {
   }
 })
 vi.mock('../../../server/common/helpers/logging/logger.js', () => ({
-  createLogger: () => ({ error: mockLoggerError, warn: mockLoggerWarn })
+  createLogger: () => ({ error: (...args) => mockLoggerError(...args) })
 }))
 vi.mock(import('#/config/config.js'), async (importOriginal) => {
   const originalModule = await importOriginal()
@@ -35,7 +34,8 @@ describe('context and cache', () => {
   })
 
   describe('#context', () => {
-    const mockRequest = { path: '/' }
+    // Signed in, as hapi marks a request that got past the password.
+    const mockRequest = { path: '/', auth: { isAuthenticated: true } }
 
     describe('When Vite manifest file read succeeds', () => {
       let contextImport
@@ -56,7 +56,7 @@ describe('context and cache', () => {
       })
 
       test('Should provide expected context', () => {
-        expect(contextResult).toMatchObject({
+        expect(contextResult).toEqual({
           assetPath: '/public/assets',
           breadcrumbs: [],
           getAssetPath: expect.any(Function),
@@ -68,11 +68,16 @@ describe('context and cache', () => {
             },
             {
               current: false,
-              text: 'About',
-              href: '/about'
+              text: 'Issues',
+              href: '/issues'
+            },
+            {
+              current: false,
+              text: 'Sign out',
+              href: '/logout'
             }
           ],
-          serviceName: 'ls-cleanse-ui',
+          serviceName: 'Cleanse',
           serviceUrl: '/'
         })
       })
@@ -116,7 +121,7 @@ describe('context and cache', () => {
   })
 
   describe('#context cache', () => {
-    const mockRequest = { path: '/' }
+    const mockRequest = { path: '/', auth: { isAuthenticated: true } }
     let contextResult
 
     describe('Vite manifest file cache', () => {
@@ -145,7 +150,7 @@ describe('context and cache', () => {
       })
 
       test('Should provide expected context', () => {
-        expect(contextResult).toMatchObject({
+        expect(contextResult).toEqual({
           assetPath: '/public/assets',
           breadcrumbs: [],
           getAssetPath: expect.any(Function),
@@ -157,11 +162,16 @@ describe('context and cache', () => {
             },
             {
               current: false,
-              text: 'About',
-              href: '/about'
+              text: 'Issues',
+              href: '/issues'
+            },
+            {
+              current: false,
+              text: 'Sign out',
+              href: '/logout'
             }
           ],
-          serviceName: 'ls-cleanse-ui',
+          serviceName: 'Cleanse',
           serviceUrl: '/'
         })
       })

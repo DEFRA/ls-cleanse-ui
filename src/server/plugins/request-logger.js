@@ -11,6 +11,10 @@ const requestLogger = {
   plugin: hapiPino,
   options: {
     ignoreFunc: pathToIgnore,
+    getChildBindings: (request) =>
+      request.path === '/auth/entra/callback'
+        ? { reqId: request.info.id }
+        : { req: request },
     ...loggerOptions
   }
 }

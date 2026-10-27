@@ -1,0 +1,99 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ text: "Back to runs", href: "/admin/runs" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    <span class="govuk-caption-l">{{ run.groupId }}</span>
+    <h1 class="govuk-heading-l">Run {{ run.runId }}</h1>
+
+    <p class="govuk-body">
+      {{ govukTag({
+        text: run.stateDetail.name,
+        classes: "govuk-tag--" + run.stateDetail.colour
+      }) }}
+    </p>
+
+    {% if run.state == "running" %}
+      {{ govukInsetText({
+        html: 'This run is ' + (run.progressPercent | round) + '% through. '
+              + '<a class="govuk-link govuk-link--no-visited-state" href="/admin/runs/'
+              + (run.runId | urlencode) + '">Refresh this page</a> for an update.'
+      }) }}
+    {% endif %}
+
+    {% if run.failureMessage %}
+      {{ govukInsetText({ text: run.failureMessage }) }}
+    {% endif %}
+
+    <h2 class="govuk-heading-m">Timing</h2>
+
+    {{ govukSummaryList({
+      rows: [
+        { key: { text: "Started" }, value: { text: run.startedAtUtc | govukDateTime } },
+        { key: { text: "Finished" }, value: { text: (run.finishedAtUtc | govukDateTime) if run.finishedAtUtc else "Not finished" } },
+        { key: { text: "Elapsed" }, value: { text: run.elapsedSeconds | duration } },
+        { key: { text: "Estimated completion" }, value: { text: run.estimatedCompletionAtUtc | govukDateTime } } if run.estimatedCompletionAtUtc,
+        { key: { text: "Last heartbeat" }, value: { text: (run.heartbeatAtUtc | govukDateTime) if run.heartbeatAtUtc else "None recorded" } }
+      ]
+    }) }}
+
+    <h2 class="govuk-heading-m">Progress</h2>
+
+    {# A completed run is in no stage, and rows written before that was fixed may still carry
+       one. A run that stopped early keeps its stage because that is the diagnostic. #}
+    {% set showStage = run.currentStage and run.state != "completed" %}
+    {% set stageLabel = "Current stage" if run.state == "running" else "Stopped during" %}
+
+    {{ govukSummaryList({
+      rows: [
+        { key: { text: stageLabel }, value: { text: run.currentStage } } if showStage,
+        { key: { text: "Records processed" }, value: { text: run.recordsProcessed } },
+        { key: { text: "Records total" }, value: { text: run.recordsTotal } },
+        { key: { text: "Percent complete" }, value: { text: (run.progressPercent | round) + "%" } },
+        { key: { text: "Detections processed" }, value: { text: run.detectionsProcessed } }
+      ]
+    }) }}
+
+    <h2 class="govuk-heading-m">What it changed</h2>
+
+    {{ govukSummaryList({
+      rows: [
+        { key: { text: "Issues raised" }, value: { text: run.issuesCreated } },
+        { key: { text: "Issues reactivated" }, value: { text: run.issuesReactivated } },
+        { key: { text: "Issues updated" }, value: { text: run.issuesUpdated } },
+        { key: { text: "Issues unchanged" }, value: { text: run.issuesUnchanged } },
+        { key: { text: "Issues deactivated" }, value: { text: run.issuesDeactivated } }
+      ]
+    }) }}
+
+    <h2 class="govuk-heading-m">Outcome</h2>
+
+    {{ govukSummaryList({
+      rows: [
+        { key: { text: "State" }, value: { text: run.stateDetail.name } },
+        { key: { text: "Cancellation requested" }, value: { text: "Yes" if run.cancellationRequested else "No" } },
+        { key: { text: "Abandon reason" }, value: { text: run.abandonReason } } if run.abandonReason,
+        { key: { text: "Failure" }, value: { text: run.failureMessage } } if run.failureMessage
+      ]
+    }) }}
+
+    {% if run.failureDetail %}
+      <h2 class="govuk-heading-m">Failure detail</h2>
+      <pre class="app-stack-trace">{{ run.failureDetail }}</pre>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

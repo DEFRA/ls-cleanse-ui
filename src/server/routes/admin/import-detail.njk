@@ -1,0 +1,104 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ text: "Back to imports", href: "/admin/imports" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if notification %}
+      {{ govukNotificationBanner({
+        type: "success",
+        titleText: "Success",
+        text: notification
+      }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">SPOL import</span>
+    <h1 class="govuk-heading-l">{{ job.fileName }}</h1>
+
+    <p class="govuk-body">
+      {{ govukTag({
+        text: job.statusDetail.name,
+        classes: "govuk-tag--" + job.statusDetail.colour
+      }) }}
+    </p>
+
+    {% if job.status == "pending" or job.status == "processing" %}
+      {{ govukInsetText({
+        html: 'This import is still running &mdash; ' + job.percentComplete + '% done.
+               <a class="govuk-link govuk-link--no-visited-state" href="/admin/imports/' + job.id + '">Refresh this page</a> for an update.'
+      }) }}
+    {% endif %}
+
+    {% if job.failureReason %}
+      {{ govukInsetText({ text: job.failureReason }) }}
+    {% endif %}
+
+    {{ govukSummaryList({
+      rows: [
+        { key: { text: "Group" }, value: { text: job.groupId } },
+        { key: { text: "Uploaded" }, value: { text: job.createdAtUtc | govukDateTime } },
+        { key: { text: "Uploaded by" }, value: { text: job.requestedBy } },
+        { key: { text: "Finished" }, value: { text: job.finishedAtUtc | govukDateTime } } if job.finishedAtUtc,
+        { key: { text: "Rows in file" }, value: { text: job.totalRows } },
+        { key: { text: "Rows processed" }, value: { text: job.processedRows } },
+        { key: { text: "Applied to an issue" }, value: { text: job.matched } },
+        { key: { text: "No matching issue" }, value: { text: job.unmatched } },
+        { key: { text: "Duplicate keys collapsed" }, value: { text: job.duplicatesCollapsed } },
+        { key: { text: "Rows without a usable key" }, value: { text: job.invalid } }
+      ]
+    }) }}
+
+  </div>
+</div>
+
+{% if rejections | length %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      <h2 class="govuk-heading-m">Import warnings and rejected rows</h2>
+
+      <p class="govuk-body">
+        {% if rejectionTotal > rejections | length %}
+          Showing the first {{ rejections | length }} of {{ rejectionTotal }} report entries.
+        {% else %}
+          {{ rejectionTotal }} report entr{{ "ies" if rejectionTotal != 1 else "y" }}.
+        {% endif %}
+      </p>
+      <p class="govuk-body">Assignment warnings do not prevent the rest of a row being applied. If a name cannot be matched to exactly one known user, it is kept as a text assignment; choose a user on the issue to link it to their account.</p>
+
+      <table class="govuk-table app-table--compact">
+        <caption class="govuk-visually-hidden">Import warnings and rejected rows</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Row</th>
+            <th scope="col" class="govuk-table__header">Reason</th>
+            <th scope="col" class="govuk-table__header">Detail</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for rejection in rejections %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ rejection.rowNumber }}</td>
+              <td class="govuk-table__cell">{{ rejection.reason }}</td>
+              <td class="govuk-table__cell">{{ rejection.detail }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    <span class="govuk-caption-l">{{ groupId }}</span>
+    <h1 class="govuk-heading-l">Admin</h1>
+
+    <p class="govuk-body">
+      Operational tools for this service. Not part of the caseworker journey, and deliberately
+      not linked from the service navigation.
+    </p>
+
+    <ul class="govuk-list app-admin-menu">
+      {% for item in menu %}
+        <li>
+          <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+            <a class="govuk-link govuk-link--no-visited-state" href="{{ item.href }}">{{ item.text }}</a>
+          </h2>
+          <p class="govuk-body-s app-secondary-text govuk-!-margin-bottom-0">{{ item.description }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+
+  </div>
+</div>
+
+{% endblock %}

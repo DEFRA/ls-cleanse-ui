@@ -18,44 +18,26 @@
 {% endblock %}
 
 {% block head %}
-  {% if cookiesPolicy.analytics %}
-    {% include "../partials/google-tag-manager/head-content.njk" %}
-  {% endif %}
-
   <link href="{{ getAssetPath('src/client/stylesheets/application.scss') }}" rel="stylesheet">
 {% endblock %}
 
-
-{% block bodyStart %}
-  {# Show banner only if user hasn't made a choice yet #}
-  {% if not cookiesPolicy.confirmed %}
-    {% include "../partials/cookies/banner.njk" %}
-  {% endif %}
-
-  {# Only load GTM when user has accepted analytics cookies #}
-  {% if cookiesPolicy.analytics %}
-    {% include "../partials/google-tag-manager/body-content.njk" %}
-  {% endif %}
-{% endblock %}
-
 {% block header %}
-  {# serviceName being used in govukHeader will be @deprecated in v6. It has moved to govukServiceNavigation - https://github.com/alphagov/govuk-frontend/blob/main/CHANGELOG.md#move-service-name-and-navigation-links-from-the-govuk-header-to-service-navigation-component #}
   {{ govukHeader({
     homepageUrl: "https://www.gov.uk/",
     classes: "app-header",
-    containerClasses: "govuk-width-container",
-    serviceName: serviceName,
-    serviceUrl: serviceUrl,
-    useTudorCrown: true
+    containerClasses: "govuk-width-container"
   }) }}
 
+  {# v6 removed serviceName, serviceUrl and navigation from govukHeader. They live here now. #}
   {{ govukServiceNavigation({
+    serviceName: serviceName,
+    serviceUrl: serviceUrl,
     navigation: navigation
   }) }}
 {% endblock %}
 
 {% block pageTitle %}
-  {{ pageTitle }} | {{ serviceName }}
+  {{ "Error: " if error }}{{ pageTitle }} - {{ serviceName }} - GOV.UK
 {% endblock %}
 
 {% block beforeContent %}
@@ -64,25 +46,29 @@
       items: breadcrumbs
     }) }}
   {% endif %}
+
+  {% block backLink %}{% endblock %}
 {% endblock %}
 
 {% block content %}{% endblock %}
 
 {% block footer %}
+  {# The admin area is deliberately unlinked: normal users have no access, so it is reached by
+     typing the URL rather than by navigation. #}
   {{ govukFooter({
     meta: {
       items: [
         {
-          href: "https://www.gov.uk/help/privacy-notice",
-          text: "Privacy"
+          href: "https://www.gov.uk/help/accessibility-statement",
+          text: "Accessibility statement"
         },
         {
-          href: "/cookies",
+          href: "https://www.gov.uk/help/cookies",
           text: "Cookies"
         },
         {
-          href: "https://www.gov.uk/help/accessibility-statement",
-          text: "Accessibility statement"
+          href: "https://www.gov.uk/help/privacy-notice",
+          text: "Privacy"
         }
       ]
     }

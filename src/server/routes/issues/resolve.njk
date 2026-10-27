@@ -1,0 +1,56 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/character-count/macro.njk" import govukCharacterCount %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to issue", href: "/issues/" + issue.id }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#comments" }]
+      }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">CPH {{ issue.cph }}</span>
+    <h1 class="govuk-heading-l">Mark as resolved</h1>
+
+    <p class="govuk-body">
+      Resolve this issue when the underlying difference between CTS and SAM has been put right.
+      The overnight rules decide for themselves whether the problem has really gone.
+    </p>
+
+    <form method="post" novalidate>
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+      <input type="hidden" name="expectedVersion" value="{{ issue.version }}">
+
+      {{ govukCharacterCount({
+        id: "comments",
+        name: "comments",
+        maxlength: 2000,
+        value: comments,
+        label: { text: "What did you do? (optional)" },
+        hint: { text: "This is recorded against the issue so the next person can see what happened." },
+        errorMessage: { text: error } if error
+      }) }}
+
+      {{ govukButton({ text: "Mark as resolved" }) }}
+
+      <p class="govuk-body">
+        <a class="govuk-link govuk-link--no-visited-state" href="/issues/{{ issue.id }}">Cancel</a>
+      </p>
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}
