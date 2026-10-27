@@ -360,13 +360,13 @@ By default the Cleanse backend runs in the same stack. `compose.local-backend.ym
 `compose.yml` from the `ls-cleanse-api` repository, which must be checked out next to this one, as `../ls-cleanse-api`. The stack then
 has these services:
 
-| Service       | What it is                                                         | Port |
-| ------------- | ------------------------------------------------------------------ | ---- |
-| `ls-cleanse-ui` | This service, which calls the backend as `http://ls-cleanse-api:8085`     | 3000 |
-| `ls-cleanse-api`     | The backend, built from `../ls-cleanse-api`                               | 8085 |
-| `postgres`    | The backend's database, kept in the stack's `postgres-data` volume | 5432 |
-| `liquibase`   | Applies the backend's changelog to the database, then exits        |      |
-| `floci`       | The S3 emulator holding the imports bucket                         | 4566 |
+| Service          | What it is                                                            | Port |
+| ---------------- | --------------------------------------------------------------------- | ---- |
+| `ls-cleanse-ui`  | This service, which calls the backend as `http://ls-cleanse-api:8085` | 3000 |
+| `ls-cleanse-api` | The backend, built from `../ls-cleanse-api`                           | 8085 |
+| `postgres`       | The backend's database, kept in the stack's `postgres-data` volume    | 5432 |
+| `liquibase`      | Applies the backend's changelog to the database, then exits           |      |
+| `floci`          | The S3 emulator holding the imports bucket                            | 4566 |
 
 On Windows, `dev-docker-up.ps1` builds the images and starts the stack. It then waits for the health checks, checks that
 the backend answers, and verifies the Microsoft authorization redirect in Entra
