@@ -7,6 +7,8 @@ export const health = {
       server.route({
         method: 'GET',
         path: '/health',
+        // The platform asks without signing in, and kills an instance that does not answer.
+        options: { auth: false },
         ...healthController
       })
     }

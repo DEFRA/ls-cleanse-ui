@@ -1,0 +1,8 @@
+// Named 'govuk' rather than 'govuk-frontend' on purpose. A partial that shadows a real package
+// name is ambiguous: Vite's dev resolver maps the bare specifier to node_modules while Sass
+// resolves it to this file, so GOV.UK Frontend gets compiled twice — once with the asset path
+// below and once with the default — and half the fonts then 404.
+@forward 'govuk-frontend/dist/govuk' with (
+  $govuk-assets-path: '../../../node_modules/govuk-frontend/dist/govuk/assets/',
+  $govuk-global-styles: true
+);

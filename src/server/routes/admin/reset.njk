@@ -1,0 +1,92 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ text: "Back to admin", href: "/admin" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#reset-key" }]
+      }) }}
+    {% endif %}
+
+    <h1 class="govuk-heading-l">Reset the database</h1>
+
+    {{ govukWarningText({
+      text: "This permanently deletes issues, caseworker notes, case history, the audit trail, rule runs and imports. There is no undo.",
+      iconFallbackText: "Warning"
+    }) }}
+
+    <p class="govuk-body">
+      Resetting needs a key held separately from the service credentials, so that reaching this
+      page is not on its own enough to wipe the data. If no key has been configured for this
+      environment, the operation is refused outright.
+    </p>
+
+    <p class="govuk-body">
+      Issues come back on the next rule run, but every triage decision recorded against them is
+      gone for good.
+    </p>
+
+    <form method="post" novalidate>
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+
+      {{ govukRadios({
+        idPrefix: "scope",
+        name: "scope",
+        fieldset: {
+          legend: { text: "What should be deleted?", classes: "govuk-fieldset__legend--m" }
+        },
+        items: [
+          {
+            value: "group",
+            text: "Just " + groupId,
+            checked: scope == "group"
+          },
+          {
+            value: "all",
+            text: "Every group",
+            checked: scope == "all",
+            hint: { text: "Including any group not shown in this service." }
+          }
+        ]
+      }) }}
+
+      {{ govukInput({
+        id: "reset-key",
+        name: "resetKey",
+        type: "password",
+        autocomplete: "off",
+        spellcheck: false,
+        label: { text: "Reset key", classes: "govuk-label--m" },
+        hint: { text: "Held in the CDP Portal secrets for this environment." },
+        errorMessage: { text: error } if error
+      }) }}
+
+      {{ govukButton({
+        text: "Delete everything",
+        classes: "govuk-button--warning"
+      }) }}
+
+      <p class="govuk-body">
+        <a class="govuk-link govuk-link--no-visited-state" href="/admin">Cancel</a>
+      </p>
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}

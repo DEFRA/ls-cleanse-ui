@@ -1,0 +1,177 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block content %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      <h1 class="govuk-heading-l">Issues</h1>
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+
+    <div class="govuk-grid-column-one-quarter">
+      <form method="get" action="/issues" class="app-filters">
+        <input type="hidden" name="filtered" value="true">
+
+        <h2 class="govuk-heading-m">Filter</h2>
+
+        {{ govukInput({
+          id: "searchTerm",
+          name: "searchTerm",
+          value: filters.searchTerm,
+          label: {
+            text: "CPH, keeper or holding",
+            classes: "govuk-label--s"
+          },
+          classes: "govuk-!-width-full"
+        }) }}
+
+        {{ govukCheckboxes({
+          idPrefix: "workflowStatus",
+          name: "workflowStatus",
+          classes: "govuk-checkboxes--small",
+          fieldset: {
+            legend: {
+              text: "Workflow status",
+              classes: "govuk-fieldset__legend--s"
+            }
+          },
+          items: workflowStatusItems
+        }) }}
+
+        {{ govukCheckboxes({
+          idPrefix: "status",
+          name: "status",
+          classes: "govuk-checkboxes--small",
+          fieldset: {
+            legend: {
+              text: "Issue status",
+              classes: "govuk-fieldset__legend--s"
+            }
+          },
+          hint: {
+            text: "Set by the overnight rules, not by you"
+          },
+          items: statusItems
+        }) }}
+
+        {{ govukSelect({
+          id: "assignee",
+          name: "assignee",
+          label: {
+            text: "Assigned to",
+            classes: "govuk-label--s"
+          },
+          classes: "govuk-!-width-full",
+          items: assigneeItems
+        }) }}
+
+        {{ govukSelect({
+          id: "ruleId",
+          name: "ruleId",
+          label: {
+            text: "Rule",
+            classes: "govuk-label--s"
+          },
+          classes: "govuk-!-width-full",
+          items: ruleItems
+        }) }}
+
+        {{ govukButton({
+          text: "Apply filters",
+          classes: "govuk-!-margin-bottom-2"
+        }) }}
+
+        <p class="govuk-body-s">
+          <a class="govuk-link govuk-link--no-visited-state" href="/issues">Reset filters</a>
+        </p>
+      </form>
+    </div>
+
+    <div class="govuk-grid-column-three-quarters">
+
+      {% if filters.isDefault %}
+        <p class="govuk-body app-filter-summary">
+          Showing active issues that still need work.
+          <a class="govuk-link govuk-link--no-visited-state" href="/issues?filtered=true">View all issues</a>
+        </p>
+      {% endif %}
+
+      {% if totalCount == 0 %}
+
+        <h2 class="govuk-heading-m">No issues match your filters</h2>
+        <p class="govuk-body">
+          Try removing a filter, or
+          <a class="govuk-link govuk-link--no-visited-state" href="/issues">reset the filters</a>.
+        </p>
+
+      {% else %}
+
+        <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
+          {{ totalCount }} {{ "issue" if totalCount == 1 else "issues" }}
+        </h2>
+        <p class="govuk-body-s govuk-!-margin-bottom-4">
+          Showing {{ from }} to {{ to }}
+        </p>
+
+        <div class="app-table-scroll" role="region" aria-label="Issues table" tabindex="0">
+        <table class="govuk-table app-table--compact">
+          <caption class="govuk-visually-hidden">Issues matching your filters</caption>
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">CPH</th>
+              <th scope="col" class="govuk-table__header">What the rule found</th>
+              <th scope="col" class="govuk-table__header">Workflow status</th>
+              <th scope="col" class="govuk-table__header">Last updated</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for issue in issues %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <a class="govuk-link govuk-link--no-visited-state" href="/issues/{{ issue.id }}">{{ issue.cph }}</a>
+                  {% if issue.holdingName %}
+                    <span class="app-secondary-text">{{ issue.holdingName }}</span>
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {{ issue.errorDescription }}
+                  <span class="app-secondary-text">Rule {{ issue.ruleNumber }} &middot; {{ issue.errorCode }}</span>
+                </td>
+                <td class="govuk-table__cell">
+                  {{ govukTag({
+                    text: issue.workflowDetail.name,
+                    classes: "govuk-tag--" + issue.workflowDetail.colour
+                  }) }}
+                  {% if issue.isInactive %}
+                    <span class="app-secondary-text">Inactive</span>
+                  {% elif issue.isSuppressed and issue.suppressionExpiresAtUtc %}
+                    <span class="app-secondary-text">Until {{ issue.suppressionExpiresAtUtc | govukDate }}</span>
+                  {% endif %}
+                  <span class="app-secondary-text">Assigned to: {{ issue.assignedTo or "Unassigned" }}</span>
+                </td>
+                <td class="govuk-table__cell">{{ issue.updatedAtUtc | govukDate }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+
+        {% if pagination %}
+          {{ govukPagination(pagination) }}
+        {% endif %}
+
+      {% endif %}
+
+    </div>
+  </div>
+
+{% endblock %}

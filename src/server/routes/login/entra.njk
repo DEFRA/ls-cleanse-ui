@@ -1,0 +1,9 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block content %}
+  <h1 class="govuk-heading-l">Sign in</h1>
+  <p class="govuk-body">Use your Microsoft account to sign in to Cleanse.</p>
+  {{ govukButton({ text: "Sign in with Microsoft", href: loginPath }) }}
+{% endblock %}

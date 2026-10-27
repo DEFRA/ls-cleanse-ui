@@ -10,7 +10,9 @@ describe('#startServer', () => {
   let createServerImport
 
   beforeAll(async () => {
-    vi.stubEnv('PORT', '3097')
+    // Ephemeral: startServer binds for real, and a fixed port fails on a rerun while the
+    // previous listener is still in TIME_WAIT.
+    vi.stubEnv('PORT', '0')
 
     createServerImport = await import('../../server.js')
     startServerImport = await import('./start-server.js')

@@ -1,0 +1,228 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to issues", href: backLink }) }}
+{% endblock %}
+
+{% block content %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if notification %}
+        {{ govukNotificationBanner({
+          type: "success",
+          titleText: "Success",
+          text: notification
+        }) }}
+      {% endif %}
+
+      <span class="govuk-caption-l">CPH {{ issue.cph }}</span>
+      <h1 class="govuk-heading-l">{{ issue.errorDescription }}</h1>
+
+      <p class="govuk-body app-tag-row">
+        {{ govukTag({
+          text: issue.statusDetail.name,
+          classes: "govuk-tag--" + issue.statusDetail.colour
+        }) }}
+        {{ govukTag({
+          text: issue.workflowDetail.name,
+          classes: "govuk-tag--" + issue.workflowDetail.colour
+        }) }}
+      </p>
+
+      {% if issue.isInactive %}
+        {{ govukInsetText({
+          text: "The overnight rules no longer find a problem with this record, so this issue is inactive. You do not need to do anything with it."
+        }) }}
+      {% endif %}
+
+      {% if issue.isSuppressed and issue.suppressionExpiresAtUtc %}
+        {% set until = issue.suppressionExpiresAtUtc | govukDate %}
+        {% set days = issue.suppressionExpiresAtUtc | daysUntil %}
+        {{ govukInsetText({
+          html: "Suppressed until <b>" + until + "</b> (" + days + " days). It goes back to <b>To do</b> on that date."
+        }) }}
+      {% endif %}
+
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h2 class="govuk-heading-m">What do you want to do?</h2>
+      <p class="govuk-body">
+        Assigned to: {{ issue.assignedTo or "Unassigned" }}
+        {% if canAssign %}
+          <a class="govuk-link govuk-!-margin-left-2" href="/issues/{{ issue.id }}/assign">Assign or unassign</a>
+        {% endif %}
+      </p>
+
+      <div class="govuk-button-group govuk-!-margin-bottom-7">
+        {% if issue.can.start %}
+          <form method="post" action="/issues/{{ issue.id }}/start">
+            <input type="hidden" name="crumb" value="{{ crumb }}">
+            <input type="hidden" name="expectedVersion" value="{{ issue.version }}">
+            {{ govukButton({ text: "Start work" }) }}
+          </form>
+        {% endif %}
+
+        {% if issue.can.resolve %}
+          {{ govukButton({
+            text: "Mark as resolved",
+            href: "/issues/" + issue.id + "/resolve",
+            classes: "govuk-button--secondary" if issue.can.start
+          }) }}
+        {% endif %}
+
+        {% if issue.can.suppress %}
+          {{ govukButton({
+            text: "Suppress",
+            href: "/issues/" + issue.id + "/suppress",
+            classes: "govuk-button--secondary"
+          }) }}
+        {% endif %}
+
+        {% if issue.can.ignore %}
+          {{ govukButton({
+            text: "Ignore",
+            href: "/issues/" + issue.id + "/ignore",
+            classes: "govuk-button--secondary"
+          }) }}
+        {% endif %}
+
+        {% if issue.can.reopen and issue.workflowStatus != "todo" %}
+          <form method="post" action="/issues/{{ issue.id }}/reopen">
+            <input type="hidden" name="crumb" value="{{ crumb }}">
+            <input type="hidden" name="expectedVersion" value="{{ issue.version }}">
+            <input type="hidden" name="suppressed" value="{{ "true" if issue.isSuppressed else "false" }}">
+            {{ govukButton({
+              text: "Move back to To do",
+              classes: "govuk-button--secondary"
+            }) }}
+          </form>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      <h2 class="govuk-heading-m">What the rules compared</h2>
+
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-one-half">
+          <h3 class="govuk-heading-s">CTS</h3>
+          {% if evidence.cts | length %}
+            {{ govukSummaryList({ rows: evidence.cts, classes: "govuk-summary-list--no-border app-summary--compact" }) }}
+          {% else %}
+            <p class="govuk-body app-secondary-text">Nothing held.</p>
+          {% endif %}
+        </div>
+
+        <div class="govuk-grid-column-one-half">
+          <h3 class="govuk-heading-s">SAM</h3>
+          {% if evidence.sam | length %}
+            {{ govukSummaryList({ rows: evidence.sam, classes: "govuk-summary-list--no-border app-summary--compact" }) }}
+          {% else %}
+            {{ govukInsetText({
+              text: "SAM holds no holding for this CPH. That absence is what the rule found."
+            }) }}
+          {% endif %}
+        </div>
+      </div>
+
+      {% if evidence.other | length %}
+        {{ govukSummaryList({ rows: evidence.other, classes: "app-summary--compact" }) }}
+      {% endif %}
+
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h2 class="govuk-heading-m">Issue details</h2>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "CPH" },
+            value: { text: issue.cph }
+          },
+          {
+            key: { text: "Rule" },
+            value: { html: "Rule " + issue.ruleNumber + '<br><span class="app-secondary-text">Error code ' + issue.errorCode + "</span>" }
+          },
+          {
+            key: { text: "Status" },
+            value: { html: '<strong class="govuk-tag govuk-tag--' + issue.statusDetail.colour + '">' + issue.statusDetail.name + "</strong>" }
+          },
+          {
+            key: { text: "Workflow status" },
+            value: { html: '<strong class="govuk-tag govuk-tag--' + issue.workflowDetail.colour + '">' + issue.workflowDetail.name + "</strong>" }
+          },
+          {
+            key: { text: "Priority" },
+            value: { text: issue.priority | capitalize }
+          } if issue.priority,
+          {
+            key: { text: "Suppressed until" },
+            value: { text: issue.suppressionExpiresAtUtc | govukDate }
+          } if issue.isSuppressed and issue.suppressionExpiresAtUtc,
+          {
+            key: { text: "Notes from SPOL" },
+            value: { text: issue.externalNotes }
+          } if issue.externalNotes,
+          {
+            key: { text: "First raised" },
+            value: { text: issue.createdAtUtc | govukDateTime }
+          },
+          {
+            key: { text: "Last updated" },
+            value: { text: issue.updatedAtUtc | govukDateTime }
+          }
+        ]
+      }) }}
+
+      <h2 class="govuk-heading-m">Activity</h2>
+
+      <p class="govuk-body">
+        {{ govukButton({
+          text: "Add a note",
+          href: "/issues/" + issue.id + "/note",
+          classes: "govuk-button--secondary"
+        }) }}
+      </p>
+
+      {% if history | length %}
+        <ol class="govuk-list app-timeline">
+          {% for entry in history %}
+            <li class="app-timeline__item">
+              <p class="govuk-body govuk-!-margin-bottom-1">
+                <b>{{ entry.actionName }}</b> &mdash; {{ entry.comments }}
+              </p>
+              <p class="govuk-body-s app-secondary-text govuk-!-margin-bottom-0">
+                {{ entry.createdByDisplayName }} &middot; {{ entry.createdAtUtc | govukDateTime }}
+              </p>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="govuk-body app-secondary-text">Nothing has been recorded against this issue yet.</p>
+      {% endif %}
+
+    </div>
+  </div>
+
+{% endblock %}

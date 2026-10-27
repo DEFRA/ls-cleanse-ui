@@ -5,17 +5,17 @@ import Scooter from '@hapi/scooter'
 import { router } from './plugins/router.js'
 import { config } from '#/config/config.js'
 import { pulse } from './plugins/pulse.js'
+import { csrf } from './plugins/csrf.js'
 import { catchAll } from './common/helpers/errors.js'
 import { nunjucksConfig } from '#/config/nunjucks/nunjucks.js'
 import { requestTracing } from './plugins/request-tracing.js'
 import { requestLogger } from './plugins/request-logger.js'
-import { sessionCache } from './plugins/session-cache.js'
-import { getCacheEngine } from './common/helpers/session-cache/cache-engine.js'
+import { session } from './plugins/session.js'
+import { auth } from './plugins/auth.js'
+import { cleanseApi } from './common/helpers/cleanse/index.js'
 import { secureContext } from '@defra/hapi-secure-context'
 import { contentSecurityPolicy } from './plugins/content-security-policy.js'
 import { metrics } from '@defra/cdp-metrics'
-import { cookieConsent } from '#/server/plugins/cookie-consent.js'
-import { csrf } from '#/server/plugins/csrf.js'
 
 export async function createServer() {
   const server = hapi.server({
@@ -44,12 +44,6 @@ export async function createServer() {
     router: {
       stripTrailingSlash: true
     },
-    cache: [
-      {
-        name: config.get('session.cache.name'),
-        engine: getCacheEngine(config.get('session.cache.engine'))
-      }
-    ],
     state: {
       strictHeader: false
     }
@@ -60,12 +54,13 @@ export async function createServer() {
     metrics,
     secureContext,
     pulse,
-    contentSecurityPolicy,
-    sessionCache,
+    session,
+    auth,
+    csrf,
     nunjucksConfig,
     Scooter,
-    csrf,
-    cookieConsent,
+    contentSecurityPolicy,
+    cleanseApi,
     router // Register all the controllers/routes defined in src/server/router.js
   ])
 

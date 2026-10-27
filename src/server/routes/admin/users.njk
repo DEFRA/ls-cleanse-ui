@@ -1,0 +1,41 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <p class="govuk-body"><a class="govuk-back-link" href="/admin">Back to admin</a></p>
+  <h1 class="govuk-heading-l">Users</h1>
+  {% if error %}
+    <p class="govuk-body">{{ error }}</p>
+  {% elif unavailable %}
+    <p class="govuk-body">User information is not available with the current sign-in method.</p>
+  {% else %}
+    <p class="govuk-body">Users who have signed in to Cleanse. This is not a current group membership list. All times are UTC.</p>
+    {% if users | length %}
+      <table class="govuk-table">
+        <caption class="govuk-table__caption govuk-table__caption--m">{{ total }} user{{ "s" if total != 1 }} who ha{{ "ve" if total != 1 else "s" }} signed in</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Full name</th>
+            <th scope="col" class="govuk-table__header">Last logon (UTC)</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for user in users %}
+            <tr class="govuk-table__row">
+              <th scope="row" class="govuk-table__header">
+                {{ user.fullName }}
+                <span class="govuk-body-s app-user-id">ID: {{ user.id }}</span>
+              </th>
+              <td class="govuk-table__cell"><time datetime="{{ user.lastLoggedInAtUtc }}">{{ user.lastLogon }}</time></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">Nobody has signed in yet.</p>
+    {% endif %}
+    <nav aria-label="Pagination">
+      {% if previous %}<a class="govuk-link govuk-!-margin-right-4" href="{{ previous }}">Previous page</a>{% endif %}
+      {% if next %}<a class="govuk-link" href="{{ next }}">Next page</a>{% endif %}
+    </nav>
+  {% endif %}
+{% endblock %}

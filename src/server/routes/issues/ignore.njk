@@ -1,0 +1,61 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/character-count/macro.njk" import govukCharacterCount %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to issue", href: "/issues/" + issue.id }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#comments" }]
+      }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">CPH {{ issue.cph }}</span>
+    <h1 class="govuk-heading-l">Ignore this issue</h1>
+
+    <p class="govuk-body">
+      Ignore an issue when it does not need acting on and should stay out of the working queue.
+      It will not come back on its own.
+    </p>
+
+    <p class="govuk-body">
+      To make it go away only for a while,
+      <a class="govuk-link" href="/issues/{{ issue.id }}/suppress">suppress it instead</a>.
+    </p>
+
+    <form method="post" novalidate>
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+      <input type="hidden" name="expectedVersion" value="{{ issue.version }}">
+
+      {{ govukCharacterCount({
+        id: "comments",
+        name: "comments",
+        maxlength: 2000,
+        value: comments,
+        label: { text: "Why are you ignoring it? (optional)" },
+        hint: { text: "This is recorded against the issue so the next person can see why." },
+        errorMessage: { text: error } if error
+      }) }}
+
+      {{ govukButton({ text: "Ignore issue" }) }}
+
+      <p class="govuk-body">
+        <a class="govuk-link govuk-link--no-visited-state" href="/issues/{{ issue.id }}">Cancel</a>
+      </p>
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}

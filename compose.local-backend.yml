@@ -1,0 +1,18 @@
+# Layered on by ./dev-docker-up.ps1 -Backend local, the default, to run the front end and the
+# back end as one stack. It brings in the backend's own compose.yml from ../ls-cleanse-api:
+#   ls-cleanse-api  the backend, built from ../ls-cleanse-api; this service calls it as http://ls-cleanse-api:8085
+#   postgres   its database, in this stack's own volume, apart from the backend stack's
+#   liquibase  applies the backend's changelog to the database, then exits
+#   floci      the S3 emulator holding the imports bucket
+# The backend repository must be checked out next to this one. Its compose.yml stays the only
+# definition of the backend: include reads its relative paths from ../ls-cleanse-api, not from here.
+include:
+  - path: ../ls-cleanse-api/compose.yml
+
+services:
+  ls-cleanse-ui:
+    networks:
+      - cdp-tenant
+    depends_on:
+      ls-cleanse-api:
+        condition: service_healthy

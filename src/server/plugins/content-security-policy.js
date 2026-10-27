@@ -7,32 +7,24 @@ import Blankie from 'blankie'
 const contentSecurityPolicy = {
   plugin: Blankie,
   options: {
+    // Hash 'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw=' is to support a GOV.UK frontend script bundled within Nunjucks macros
+    // https://frontend.design-system.service.gov.uk/import-javascript/#if-our-inline-javascript-snippet-is-blocked-by-a-content-security-policy
     defaultSrc: ['self'],
-    connectSrc: [
-      'self',
-      'wss',
-      'data:',
-      'https://www.google.com',
-      'https://*.google-analytics.com',
-      'https://*.analytics.google.com',
-      'https://*.googletagmanager.com'
-    ],
-    imgSrc: ['self', 'data:'],
-    mediaSrc: ['self'],
-    frameSrc: ['https://www.googletagmanager.com'],
     fontSrc: ['self', 'data:'],
-    objectSrc: ['none'],
+    connectSrc: ['self', 'wss', 'data:'],
+    mediaSrc: ['self'],
+    styleSrc: ['self'],
     scriptSrc: [
       'self',
-      "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='",
-      'https://*.googletagmanager.com',
-      'https://*.google-analytics.com'
+      "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='"
     ],
-    styleSrc: ['self'],
+    imgSrc: ['self', 'data:'],
+    frameSrc: ['self', 'data:'],
+    objectSrc: ['none'],
     frameAncestors: ['none'],
     formAction: ['self'],
     manifestSrc: ['self'],
-    generateNonces: true
+    generateNonces: false
   }
 }
 

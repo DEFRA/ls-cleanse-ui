@@ -1,4 +1,6 @@
-@use "govuk-frontend" as *;
+// Relative rather than via a Sass load path: a bare specifier can resolve to a different
+// canonical path under Vite than under Sass, which compiles GOV.UK Frontend twice.
+@use "../../../../client/stylesheets/govuk" as *;
 
 .app-heading {
   display: flex;

@@ -23,6 +23,12 @@ export const config = convict({
     default: null,
     env: 'SERVICE_VERSION'
   },
+  cdpEnvironment: {
+    doc: 'The CDP environment the service is running in, injected into the container by the platform. "local" when unset',
+    format: String,
+    default: 'local',
+    env: 'ENVIRONMENT'
+  },
   host: {
     doc: 'The IP address to bind',
     format: 'ipaddress',
@@ -45,6 +51,11 @@ export const config = convict({
     doc: 'Applications Service Name',
     format: String,
     default: 'ls-cleanse-ui'
+  },
+  serviceDisplayName: {
+    doc: 'The service name shown to users. Distinct from the CDP service identity.',
+    format: String,
+    default: 'Cleanse'
   },
   root: {
     doc: 'Project root',
@@ -114,29 +125,9 @@ export const config = convict({
     env: 'ENABLE_SECURE_CONTEXT'
   },
   session: {
-    cache: {
-      engine: {
-        doc: 'backend cache is written to',
-        format: ['redis', 'memory'],
-        default: isProduction ? 'redis' : 'memory',
-        env: 'SESSION_CACHE_ENGINE'
-      },
-      name: {
-        doc: 'server side session cache name',
-        format: String,
-        default: 'session',
-        env: 'SESSION_CACHE_NAME'
-      },
-      ttl: {
-        doc: 'server side session cache ttl',
-        format: Number,
-        default: fourHoursMs,
-        env: 'SESSION_CACHE_TTL'
-      }
-    },
     cookie: {
       ttl: {
-        doc: 'Session cookie ttl',
+        doc: 'Session cookie ttl. Also how long a sign-in lasts, however busy the session',
         format: Number,
         default: fourHoursMs,
         env: 'SESSION_COOKIE_TTL'
@@ -156,43 +147,54 @@ export const config = convict({
       }
     }
   },
-  redis: {
-    host: {
-      doc: 'Redis cache host',
-      format: String,
-      default: '127.0.0.1',
-      env: 'REDIS_HOST'
+  auth: {
+    mode: {
+      doc: 'Service sign-in method. Entra access is restricted by enterprise application assignment',
+      format: ['password', 'entra'],
+      default: 'password',
+      env: 'AUTH_MODE'
     },
-    username: {
-      doc: 'Redis cache username',
-      format: String,
-      default: '',
-      env: 'REDIS_USERNAME'
+    entra: {
+      tenantId: {
+        format: String,
+        default: '',
+        env: 'ENTRA_TENANT_ID'
+      },
+      clientId: {
+        format: String,
+        default: '',
+        env: 'ENTRA_CLIENT_ID'
+      },
+      clientSecret: {
+        format: String,
+        default: '',
+        sensitive: true,
+        env: 'ENTRA_CLIENT_SECRET'
+      },
+      redirectUri: {
+        format: String,
+        default: 'http://localhost:3000/auth/entra/callback',
+        env: 'ENTRA_REDIRECT_URI'
+      },
+      postLogoutRedirectUri: {
+        format: String,
+        default: 'http://localhost:3000/login',
+        env: 'ENTRA_POST_LOGOUT_REDIRECT_URI'
+      }
     },
     password: {
-      doc: 'Redis cache password',
-      format: '*',
+      doc: 'The password everyone signs in to the service with. A CDP Portal secret. While it is unset, nobody can sign in',
+      format: String,
       default: '',
       sensitive: true,
-      env: 'REDIS_PASSWORD'
+      env: 'PASSWORD'
     },
-    keyPrefix: {
-      doc: 'Redis cache key prefix name used to isolate the cached results across multiple clients',
+    adminPassword: {
+      doc: 'The second password the admin area asks for, once signed in. A CDP Portal secret. While it is unset, the admin area cannot be opened',
       format: String,
-      default: 'ls-cleanse-ui:',
-      env: 'REDIS_KEY_PREFIX'
-    },
-    useSingleInstanceCache: {
-      doc: 'Connect to a single instance of redis instead of a cluster.',
-      format: Boolean,
-      default: !isProduction,
-      env: 'USE_SINGLE_INSTANCE_CACHE'
-    },
-    useTLS: {
-      doc: 'Connect to redis using TLS',
-      format: Boolean,
-      default: isProduction,
-      env: 'REDIS_TLS'
+      default: '',
+      sensitive: true,
+      env: 'ADMIN_PASSWORD'
     }
   },
   nunjucks: {
@@ -215,48 +217,73 @@ export const config = convict({
       env: 'TRACING_HEADER'
     }
   },
-  cookieConsent: {
-    name: {
-      doc: 'Name of cookie that stores the user consent preference',
+  aws: {
+    region: {
+      doc: 'AWS region, used when minting an STS web identity token',
       format: String,
-      default: `${encodeURIComponent('ls-cleanse-ui')}_policy`
-    },
-    policy: {
-      clearInvalid: {
-        doc: 'Clear the cookie if it fails validation (e.g. bad JSON)',
-        format: Boolean,
-        default: true
-      },
-      encoding: {
-        doc: 'Hapi cookie encoding — base64json automatically serialises objects',
-        format: String,
-        default: 'base64json'
-      },
-      isSameSite: {
-        doc: 'SameSite attribute — Lax allows the cookie on top-level navigations',
-        format: String,
-        default: 'Lax'
-      },
-      isSecure: {
-        doc: 'Secure flag — only send cookie over HTTPS in production',
-        format: Boolean,
-        default: isProduction
-      }
-    },
-    config: {
-      ttl: {
-        doc: 'Cookie time-to-live in milliseconds (1 year)',
-        format: 'nat',
-        default: 1000 * 60 * 60 * 24 * 365
-      }
+      default: 'eu-west-2',
+      env: 'AWS_REGION'
     }
   },
-  googleAnalytics: {
-    googleTagManagerKey: {
-      doc: 'Google Tag Manager container ID (e.g. GTM-XXXXXXXX)',
+  cleanse: {
+    apiUrl: {
+      doc: 'Base URL of the Cleanse backend',
+      format: String,
+      default: 'http://localhost:8085',
+      env: 'CLEANSE_API_URL'
+    },
+    audience: {
+      doc: 'Audience the backend expects in a web identity token. Chosen by us, not the platform',
+      format: String,
+      default: 'ls-cleanse-api',
+      env: 'CLEANSE_API_AUDIENCE'
+    },
+    auth: {
+      doc: 'How to authenticate to the backend. LocalStack does not implement GetWebIdentityToken, so local development uses the shared key',
+      format: ['stsJwt', 'apiKey'],
+      default: isProduction ? 'stsJwt' : 'apiKey',
+      env: 'CLEANSE_API_AUTH'
+    },
+    apiKey: {
+      doc: 'Shared key for the x-cleanse-api-key header. Only read when auth is apiKey',
+      format: String,
+      default: 'local-development-key',
+      sensitive: true,
+      env: 'CLEANSE_API_KEY'
+    },
+    gatewayKey: {
+      doc: "Developer key for CDP's ephemeral API gateway, sent as x-api-key. Local development only: it lets a front-end on a developer's machine call a deployed backend through https://ephemeral-protected.api.<env>.cdp-int.defra.cloud/ls-cleanse-api. Never set on CDP",
       format: String,
       default: '',
-      env: 'GOOGLE_TAG_MANAGER_KEY'
+      sensitive: true,
+      env: 'CLEANSE_GATEWAY_KEY'
+    },
+    timeout: {
+      doc: 'Milliseconds to wait for the backend before giving up',
+      format: Number,
+      default: 20000,
+      env: 'CLEANSE_API_TIMEOUT'
+    },
+    groupId: {
+      doc: 'The rule group the service works in. Only cts-sam exists today',
+      format: String,
+      default: 'cts-sam',
+      env: 'CLEANSE_GROUP_ID'
+    }
+  },
+  demo: {
+    anonymise: {
+      doc: 'Replace personal data from the backend with stable fake values before it reaches any page. For demos only',
+      format: Boolean,
+      default: false,
+      env: 'DEMO_ANONYMISE'
+    },
+    anonymiseKey: {
+      doc: 'Secret that seeds the fake values. The same key always gives the same fakes; a different key gives different ones. Required when anonymise is on',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'DEMO_ANONYMISE_KEY'
     }
   }
 })

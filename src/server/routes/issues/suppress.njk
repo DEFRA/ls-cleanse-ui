@@ -1,0 +1,73 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/character-count/macro.njk" import govukCharacterCount %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to issue", href: "/issues/" + issue.id }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#period" }]
+      }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">CPH {{ issue.cph }}</span>
+    <h1 class="govuk-heading-l">Suppress this issue</h1>
+
+    <p class="govuk-body">
+      Suppressing hides the issue from the working queue for a set time. When that time is up it
+      goes back to <b>To do</b> automatically.
+    </p>
+
+    <p class="govuk-body">
+      If this issue should never come back,
+      <a class="govuk-link" href="/issues/{{ issue.id }}/ignore">ignore it instead</a>.
+    </p>
+
+    <form method="post" novalidate>
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+      <input type="hidden" name="expectedVersion" value="{{ issue.version }}">
+
+      {{ govukRadios({
+        idPrefix: "period",
+        name: "period",
+        fieldset: {
+          legend: {
+            text: "How long should it be suppressed for?",
+            classes: "govuk-fieldset__legend--m"
+          }
+        },
+        items: periodItems,
+        errorMessage: { text: error } if error
+      }) }}
+
+      {{ govukCharacterCount({
+        id: "comments",
+        name: "comments",
+        maxlength: 2000,
+        value: comments,
+        label: { text: "Why are you suppressing it? (optional)" }
+      }) }}
+
+      {{ govukButton({ text: "Suppress issue" }) }}
+
+      <p class="govuk-body">
+        <a class="govuk-link govuk-link--no-visited-state" href="/issues/{{ issue.id }}">Cancel</a>
+      </p>
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}

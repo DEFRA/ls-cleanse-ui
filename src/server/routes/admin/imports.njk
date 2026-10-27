@@ -1,0 +1,124 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/details/macro.njk" import govukDetails %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/file-upload/macro.njk" import govukFileUpload %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#file" }]
+      }) }}
+    {% endif %}
+
+    {% if notification %}
+      {{ govukNotificationBanner({
+        type: "success",
+        titleText: "Success",
+        text: notification
+      }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">{{ groupId }}</span>
+    <h1 class="govuk-heading-l">SPOL imports</h1>
+
+    <p class="govuk-body">
+      Upload an extract from the SharePoint list to bring the triage state recorded there onto
+      the matching issues. Only the columns are read &mdash; nothing is inferred from the notes.
+    </p>
+
+    {% set requiredColumnsHtml %}
+      <p class="govuk-body">A CSV with these columns:</p>
+      <ul class="govuk-list govuk-list--bullet">
+        <li><code>CPH</code></li>
+        <li><code>Rule No</code></li>
+        <li><code>Status</code></li>
+        <li><code>Notes</code></li>
+        <li><code>Priority</code></li>
+        <li><code>Date Received</code></li>
+      </ul>
+      <p class="govuk-body">
+        <code>1st</code>, <code>2nd</code> and <code>3rd Contact Date</code> and
+        <code>Letter/email sent</code> are optional, and become case history entries.
+      </p>
+    {% endset %}
+
+    {{ govukDetails({
+      summaryText: "What the file must contain",
+      html: requiredColumnsHtml
+    }) }}
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+
+      {{ govukFileUpload({
+        id: "file",
+        name: "file",
+        label: { text: "Upload a SPOL CSV extract", classes: "govuk-label--s" },
+        accept: ".csv,text/csv",
+        errorMessage: { text: error } if error
+      }) }}
+
+      {{ govukButton({ text: "Upload file" }) }}
+    </form>
+
+  </div>
+</div>
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-full">
+
+    <h2 class="govuk-heading-m">Recent imports</h2>
+
+    {% if imports | length %}
+      <table class="govuk-table app-table--compact">
+        <caption class="govuk-visually-hidden">Recent SPOL imports, newest first</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">File</th>
+            <th scope="col" class="govuk-table__header">Uploaded</th>
+            <th scope="col" class="govuk-table__header">Status</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rows</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Matched</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Unmatched</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for job in imports %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">
+                <a class="govuk-link govuk-link--no-visited-state" href="/admin/imports/{{ job.id }}">{{ job.fileName }}</a>
+              </td>
+              <td class="govuk-table__cell">{{ job.createdAtUtc | govukDateTime }}</td>
+              <td class="govuk-table__cell">
+                {{ govukTag({
+                  text: job.statusDetail.name,
+                  classes: "govuk-tag--" + job.statusDetail.colour
+                }) }}
+                {% if job.status == "processing" %}
+                  <span class="app-secondary-text">{{ job.percentComplete }}%</span>
+                {% endif %}
+              </td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.totalRows }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.matched }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.unmatched }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">No files have been imported yet.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

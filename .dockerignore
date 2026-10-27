@@ -1,3 +1,12 @@
 node_modules
 Dockerfile
 coverage
+# Local tooling and history. None of it belongs in the image, and leaving it in the build context
+# would invalidate the build cache, and re-run the build, on every commit or script edit.
+.git
+compose.yml
+compose.*.yml
+scripts
+*.ps1
+.env
+.env.*
