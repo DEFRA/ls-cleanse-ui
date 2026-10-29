@@ -143,7 +143,11 @@ export function createCleanseClient(options = {}) {
         signal: AbortSignal.timeout(timeout)
       })
     } catch (error) {
-      logger.error({ err: error, url, method }, 'Cleanse API request failed')
+      // The path only: the query string can carry a caseworker's search term.
+      logger.error(
+        { err: error, url: `${baseUrl}${path}`, method },
+        'Cleanse API request failed'
+      )
       throw new CleanseApiError({
         status: 503,
         code: 'api.unreachable',

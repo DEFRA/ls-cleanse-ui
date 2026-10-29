@@ -26,6 +26,10 @@ export const loggerOptions = {
         ...logConfig.redact,
         'req.headers.authorization',
         'req.headers.cookie',
+        // The issues search carries whatever a caseworker typed, and the referer carries the
+        // previous page's query string, so neither may reach the logs.
+        'req.headers.referer',
+        'req.query',
         'res.headers'
       ])
     ],

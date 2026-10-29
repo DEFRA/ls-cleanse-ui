@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 
 import { createCleanseClient, CleanseApiError } from './client.js'
+import { createLogger } from '#/server/common/helpers/logging/logger.js'
 
 const ok = (body) =>
   new Response(JSON.stringify(body), {
@@ -189,6 +190,55 @@ describe('#createCleanseClient error handling', () => {
       status: 503,
       code: 'api.unreachable'
     })
+  })
+
+  /** The search term is whatever a caseworker typed, so a failure log must not repeat it. */
+  test('Should log a failed request by its path, never its query string', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'))
+    const errorLog = vi
+      .spyOn(createLogger(), 'error')
+      .mockImplementation(() => {})
+    const client = createCleanseClient({ auth: { headers: async () => ({}) } })
+
+    await expect(
+      client.searchIssues({ groupId: 'cts-sam', searchTerm: 'Keeper-Surname' })
+    ).rejects.toMatchObject({ code: 'api.unreachable' })
+
+    const [details] = errorLog.mock.calls.at(-1)
+    expect(details.url).toMatch(/\/v1\/issues$/)
+    expect(JSON.stringify(details)).not.toContain('Keeper-Surname')
+  })
+
+  /** A backend that accepts the connection but never answers must not hold the page open. */
+  test('Should give up on a backend that does not answer within the timeout', async () => {
+    let signal
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      (_url, options) =>
+        new Promise((_resolve, reject) => {
+          signal = options.signal
+          signal.addEventListener('abort', () => reject(signal.reason))
+        })
+    )
+    const client = createCleanseClient({
+      auth: { headers: async () => ({}) },
+      timeout: 20
+    })
+
+    await expect(client.getRules()).rejects.toMatchObject({
+      status: 503,
+      code: 'api.unreachable'
+    })
+    expect(signal.aborted).toBe(true)
+    expect(signal.reason).toMatchObject({ name: 'TimeoutError' })
+  })
+
+  test('Should time out every backend call by default', async () => {
+    const fetchSpy = stubFetch(ok([]))
+    const client = createCleanseClient({ auth: { headers: async () => ({}) } })
+
+    await client.getRules()
+
+    expect(fetchSpy.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
   })
 
   /** Deployed, the credential is an STS token, and failing to mint one must not crash a page. */

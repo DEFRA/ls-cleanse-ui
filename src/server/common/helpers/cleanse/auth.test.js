@@ -12,7 +12,7 @@ vi.mock('@aws-sdk/client-sts', () => ({
   })
 }))
 
-const { createAuthStrategy } = await import('./auth.js')
+const { createAuthStrategy, tokenRequestTimeoutMs } = await import('./auth.js')
 const { GetWebIdentityTokenCommand } = await import('@aws-sdk/client-sts')
 
 describe('#createAuthStrategy', () => {
@@ -72,6 +72,33 @@ describe('#createAuthStrategy', () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+
+    test('Should give every STS call a timeout, since the SDK sets none', async () => {
+      await createAuthStrategy('stsJwt').headers()
+
+      const options = send.mock.calls.at(-1)[1]
+      expect(options.abortSignal).toBeInstanceOf(AbortSignal)
+      expect(options.abortSignal.aborted).toBe(false)
+      expect(tokenRequestTimeoutMs).toBeGreaterThan(0)
+      expect(tokenRequestTimeoutMs).toBeLessThanOrEqual(10_000)
+    })
+
+    /** A stalled STS must fail the request, not hold the page open until the socket gives up. */
+    test('Should give up on STS when it does not answer in time', async () => {
+      send.mockImplementation(
+        (_command, { abortSignal }) =>
+          new Promise((_resolve, reject) => {
+            abortSignal.addEventListener('abort', () =>
+              reject(abortSignal.reason)
+            )
+          })
+      )
+      const strategy = createAuthStrategy('stsJwt', { timeoutMs: 20 })
+
+      await expect(strategy.headers()).rejects.toMatchObject({
+        name: 'TimeoutError'
+      })
     })
   })
 })
