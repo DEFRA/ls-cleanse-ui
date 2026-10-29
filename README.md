@@ -8,6 +8,7 @@ Core delivery platform Node.js Frontend Template.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
+- [Architecture](#architecture)
 - [Signing in](#signing-in)
 - [Sessions](#sessions)
 - [Demo anonymisation](#demo-anonymisation)
@@ -42,6 +43,11 @@ To use the correct version of Node.js for this application, via nvm:
 cd ls-cleanse-ui
 nvm use
 ```
+
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for an overview of how the Cleanse front-end, back-end,
+database and staff sign-in fit together.
 
 ## Signing in
 

@@ -64,6 +64,11 @@
     "pino": "10.4.0",
     "pino-pretty": "13.2.0"
   },
+  "overrides": {
+    "blankie": {
+      "@hapi/joi": "npm:joi@^17.13.6"
+    }
+  },
   "devDependencies": {
     "@babel/preset-env": "8.0.7",
     "@defra/hapi-connect": "1.0.2",
