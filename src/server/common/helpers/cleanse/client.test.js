@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 
 import { createCleanseClient, CleanseApiError } from './client.js'
+import { createLogger } from '#/server/common/helpers/logging/logger.js'
 
 const ok = (body) =>
   new Response(JSON.stringify(body), {
@@ -189,6 +190,23 @@ describe('#createCleanseClient error handling', () => {
       status: 503,
       code: 'api.unreachable'
     })
+  })
+
+  /** The search term is whatever a caseworker typed, so a failure log must not repeat it. */
+  test('Should log a failed request by its path, never its query string', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'))
+    const errorLog = vi
+      .spyOn(createLogger(), 'error')
+      .mockImplementation(() => {})
+    const client = createCleanseClient({ auth: { headers: async () => ({}) } })
+
+    await expect(
+      client.searchIssues({ groupId: 'cts-sam', searchTerm: 'Keeper-Surname' })
+    ).rejects.toMatchObject({ code: 'api.unreachable' })
+
+    const [details] = errorLog.mock.calls.at(-1)
+    expect(details.url).toMatch(/\/v1\/issues$/)
+    expect(JSON.stringify(details)).not.toContain('Keeper-Surname')
   })
 
   /** A backend that accepts the connection but never answers must not hold the page open. */
