@@ -32,8 +32,8 @@
 ### Local application configuration
 
 Run `.\dev-docker-up.ps1` once to create the ignored local `.env` file, then fill
-in the Entra values below and run it again. Generated local session/admin secrets
-are saved in `.env`; keep this file private.
+in the Entra values below and run it again. Generated local secrets are saved in
+`.env`; keep this file private.
 
 | Setting                          | Value                                       |
 | -------------------------------- | ------------------------------------------- |

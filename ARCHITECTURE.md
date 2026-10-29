@@ -16,7 +16,7 @@ flowchart LR
     subgraph cdp["DEFRA Core Delivery Platform"]
         ui["Cleanse UI<br/>ls-cleanse-ui<br/>Node.js front-end"]
         api["Cleanse back-end<br/>ls-cleanse-api<br/>.NET API + rules engine"]
-        pg[("PostgreSQL<br/>issues, audit, imports")]
+        pg[("PostgreSQL<br/>issues, audit trail")]
     end
 
     staff -->|HTTPS| ui
@@ -29,15 +29,14 @@ flowchart LR
 ## Components
 
 - **Cleanse UI** (`ls-cleanse-ui`, this repository) — Node.js 24, Hapi and GOV.UK Frontend.
-  Sign-in, the issues list and triage pages, and an admin area for rule runs, SPOL imports and
-  service status. Sessions are an encrypted browser cookie; it uses no Redis.
+  Sign-in, the issues list and triage pages. Sessions are an encrypted browser cookie; it uses no
+  Redis.
 - **Cleanse back-end** ([`ls-cleanse-api`](https://github.com/DEFRA/ls-cleanse-api)) — ASP.NET
-  Core (.NET 10) minimal API hosting the domain, the `cts-sam` rules engine (01:00 UTC daily and
-  on demand) and the SPOL import worker. Reads the CTS and SAM read model from the KRDS Data
-  Bridge (`ls-keeper-data-bridge-backend`).
+  Core (.NET 10) minimal API hosting the domain and the `cts-sam` rules engine (01:00 UTC daily
+  and on demand). Reads the CTS and SAM read model from the KRDS Data Bridge
+  (`ls-keeper-data-bridge-backend`).
 - **PostgreSQL** — Aurora PostgreSQL with IAM authentication. Issues, workflow state, audit
-  trail, issue history, rule runs, import jobs and known users. Uploaded import files are held in
-  an S3 bucket.
+  trail, issue history, rule runs and known users.
 - **Microsoft Entra ID** — sign-in for internal staff (`AUTH_MODE=entra`), limited by
   enterprise-application assignment; see [ENTRA-AUTH.md](ENTRA-AUTH.md). A shared-password mode
   exists for environments without Entra.
