@@ -15,6 +15,13 @@ const tokenLifetimeSeconds = 300
 const refreshMarginMs = 30_000
 
 /**
+ * STS answers in well under a second. The AWS SDK sets no timeout of its own, and this call runs
+ * before the backend request's own timeout starts, so without this a stalled STS would hold a
+ * page open indefinitely.
+ */
+export const tokenRequestTimeoutMs = 10_000
+
+/**
  * Sends the shared key. The backend compares it in constant time against its own copy.
  */
 function apiKeyStrategy() {
@@ -32,7 +39,7 @@ function apiKeyStrategy() {
  * Asks STS for a short-lived JWT signed by AWS, using the container credentials CDP provisions.
  * No credential is ever issued, stored or rotated by us.
  */
-function stsJwtStrategy() {
+function stsJwtStrategy({ timeoutMs = tokenRequestTimeoutMs } = {}) {
   const audience = config.get('cleanse.audience')
   const client = new STSClient({ region: config.get('aws.region') })
 
@@ -45,7 +52,8 @@ function stsJwtStrategy() {
         Audience: [audience],
         DurationSeconds: tokenLifetimeSeconds
         // Tags are deliberately absent: supplying them is rejected by STS.
-      })
+      }),
+      { abortSignal: AbortSignal.timeout(timeoutMs) }
     )
 
     return {
@@ -67,6 +75,12 @@ function stsJwtStrategy() {
   }
 }
 
-export function createAuthStrategy(strategy = config.get('cleanse.auth')) {
-  return strategy === 'stsJwt' ? stsJwtStrategy() : apiKeyStrategy()
+/**
+ * `options.timeoutMs` exists for tests; production always uses `tokenRequestTimeoutMs`.
+ */
+export function createAuthStrategy(
+  strategy = config.get('cleanse.auth'),
+  options = {}
+) {
+  return strategy === 'stsJwt' ? stsJwtStrategy(options) : apiKeyStrategy()
 }

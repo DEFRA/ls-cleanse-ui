@@ -191,6 +191,38 @@ describe('#createCleanseClient error handling', () => {
     })
   })
 
+  /** A backend that accepts the connection but never answers must not hold the page open. */
+  test('Should give up on a backend that does not answer within the timeout', async () => {
+    let signal
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      (_url, options) =>
+        new Promise((_resolve, reject) => {
+          signal = options.signal
+          signal.addEventListener('abort', () => reject(signal.reason))
+        })
+    )
+    const client = createCleanseClient({
+      auth: { headers: async () => ({}) },
+      timeout: 20
+    })
+
+    await expect(client.getRules()).rejects.toMatchObject({
+      status: 503,
+      code: 'api.unreachable'
+    })
+    expect(signal.aborted).toBe(true)
+    expect(signal.reason).toMatchObject({ name: 'TimeoutError' })
+  })
+
+  test('Should time out every backend call by default', async () => {
+    const fetchSpy = stubFetch(ok([]))
+    const client = createCleanseClient({ auth: { headers: async () => ({}) } })
+
+    await client.getRules()
+
+    expect(fetchSpy.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
+  })
+
   /** Deployed, the credential is an STS token, and failing to mint one must not crash a page. */
   test('Should turn a credential that cannot be had into an error a page can show', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
