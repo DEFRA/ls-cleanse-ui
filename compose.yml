@@ -18,6 +18,8 @@ services:
       AUTH_MODE: ${AUTH_MODE:-password}
       ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      # The production default is a CDP federated credential, which needs an STS token only CDP can issue.
+      ENTRA_CLIENT_AUTH: ${ENTRA_CLIENT_AUTH:-secret}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
       ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI:-http://localhost:3000/auth/entra/callback}
       ENTRA_POST_LOGOUT_REDIRECT_URI: ${ENTRA_POST_LOGOUT_REDIRECT_URI:-http://localhost:3000/login}

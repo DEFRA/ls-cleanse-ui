@@ -24,8 +24,7 @@ describe('#session', () => {
         options: { auth: false },
         handler(request, h) {
           if (request.query.signIn === 'entra') {
-            signInEntra(request, { id: randomUUID() })
-            signIn(request, 'admin')
+            signInEntra(request, { id: randomUUID() }, { admin: true })
           } else if (request.query.signIn) {
             signIn(request, 'service')
             signIn(request, 'admin')

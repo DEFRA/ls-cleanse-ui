@@ -37,9 +37,10 @@ flowchart LR
   (`ls-keeper-data-bridge-backend`).
 - **PostgreSQL** — Aurora PostgreSQL with IAM authentication. Issues, workflow state, audit
   trail, issue history, rule runs and known users.
-- **Microsoft Entra ID** — sign-in for internal staff (`AUTH_MODE=entra`), limited by
-  enterprise-application assignment; see [ENTRA-AUTH.md](ENTRA-AUTH.md). A shared-password mode
-  exists for environments without Entra.
+- **Microsoft Entra ID** — sign-in for internal staff in production (`AUTH_MODE=entra`), limited
+  by enterprise-application assignment and the `cleanse-user` and `cleanse-admin` app roles. The UI
+  proves its own identity to Entra with a CDP federated credential, so no client secret is stored;
+  see [ENTRA-AUTH.md](ENTRA-AUTH.md). The other environments use the shared-password mode.
 
 ## Notes
 

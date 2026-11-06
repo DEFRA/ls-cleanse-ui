@@ -149,7 +149,7 @@ export const config = convict({
   },
   auth: {
     mode: {
-      doc: 'Service sign-in method. Entra access is restricted by enterprise application assignment',
+      doc: 'Service sign-in method. Entra admits only users holding a Cleanse app role, and the cleanse-admin role opens the admin area',
       format: ['password', 'entra'],
       default: 'password',
       env: 'AUTH_MODE'
@@ -165,7 +165,20 @@ export const config = convict({
         default: '',
         env: 'ENTRA_CLIENT_ID'
       },
+      clientAuth: {
+        doc: 'How the service proves its identity to Entra when redeeming a sign-in. federated presents a CDP STS web identity token that the app registration trusts, so no secret is stored. STS is unavailable locally, so local development uses secret',
+        format: ['federated', 'secret'],
+        default: isProduction ? 'federated' : 'secret',
+        env: 'ENTRA_CLIENT_AUTH'
+      },
+      federatedAudience: {
+        doc: "Audience of the STS token presented to Entra. Must match the app registration's federated credential",
+        format: String,
+        default: 'api://AzureADTokenExchange',
+        env: 'ENTRA_FEDERATED_AUDIENCE'
+      },
       clientSecret: {
+        doc: 'Only read when clientAuth is secret',
         format: String,
         default: '',
         sensitive: true,
@@ -190,7 +203,7 @@ export const config = convict({
       env: 'PASSWORD'
     },
     adminPassword: {
-      doc: 'The second password the admin area asks for, once signed in. A CDP Portal secret. While it is unset, the admin area cannot be opened',
+      doc: 'The second password the admin area asks for, once signed in, in password mode. In Entra mode the cleanse-admin app role opens the admin area instead. A CDP Portal secret. While it is unset, the admin area cannot be opened in password mode',
       format: String,
       default: '',
       sensitive: true,

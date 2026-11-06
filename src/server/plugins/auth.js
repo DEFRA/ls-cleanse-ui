@@ -14,9 +14,18 @@ const entraKey = 'entraIdentity'
 export const isEntra = () => config.get('auth.mode') === 'entra'
 
 export function entraFingerprint() {
-  const { tenantId, clientId, clientSecret } = config.get('auth.entra')
+  const { tenantId, clientId, clientAuth, clientSecret, federatedAudience } =
+    config.get('auth.entra')
   return createHash('sha256')
-    .update(JSON.stringify([tenantId, clientId, clientSecret]))
+    .update(
+      JSON.stringify([
+        tenantId,
+        clientId,
+        clientAuth,
+        clientSecret,
+        federatedAudience
+      ])
+    )
     .digest('base64url')
 }
 
@@ -32,13 +41,15 @@ export function entraIdentity(request) {
     : null
 }
 
-export function signInEntra(request, user) {
+/** `admin` is whether the ID token carried the cleanse-admin role. It holds until sign-out. */
+export function signInEntra(request, user, { admin = false } = {}) {
   request.yar.reset()
   const signedInAt = Date.now()
   request.yar.set(entraKey, {
     userId: user.id,
     signedInAt,
-    fingerprint: entraFingerprint()
+    fingerprint: entraFingerprint(),
+    admin
   })
   request.yar.set(sessionKey, {
     signedInAt,
@@ -49,7 +60,8 @@ export function signInEntra(request, user) {
 
 /**
  * Every page is behind the service password. The admin area is behind the admin password as
- * well, which is only asked of someone already signed in.
+ * well, which is only asked of someone already signed in. In Entra mode, Microsoft sign-in stands
+ * in for the first and the cleanse-admin app role for the second.
  */
 export const gates = {
   service: { setting: 'auth.password', signInPath: '/login', home: '/' },
@@ -119,10 +131,11 @@ function signedInFrom(request, key = sessionKey) {
   }
 }
 
-/** Whether the session has been signed in to a gate with its current password. */
+/** Whether the session has been signed in to a gate, with its current password or by Entra. */
 export function isSignedInTo(request, gate) {
-  if (gate === 'service' && isEntra()) {
-    return Boolean(entraIdentity(request))
+  if (isEntra()) {
+    const identity = entraIdentity(request)
+    return gate === 'admin' ? identity?.admin === true : Boolean(identity)
   }
   const signedIn = signedInFrom(request)
   const password = passwordFor(gate)
@@ -130,7 +143,6 @@ export function isSignedInTo(request, gate) {
   if (
     password === '' ||
     (signedIn?.mode ?? 'password') !== config.get('auth.mode') ||
-    (isEntra() && !entraIdentity(request)) ||
     typeof signedIn?.[gate] !== 'string' ||
     typeof signedIn.nonce !== 'string' ||
     !isCurrent(signedIn)

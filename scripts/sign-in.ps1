@@ -5,7 +5,8 @@
 
 .DESCRIPTION
     PASSWORD signs in to the service, and ADMIN_PASSWORD then opens the admin area. On CDP both
-    are Portal secrets. Local entry points load the ignored .env file into the process first.
+    are Portal secrets. In Entra mode neither is used: Microsoft sign-in and the cleanse-admin
+    app role take their places. Local entry points load the ignored .env file into the process first.
     Process settings take precedence over the User environment. Startup persists missing
     local passwords in .env.
 #>
@@ -80,7 +81,7 @@ function Restore-SignInVariables([hashtable] $Previous) {
 <# One line per password. A generated one is shown, because there is no other way to know it. #>
 function Format-SignInPasswords($Passwords) {
     foreach ($password in $Passwords) {
-        if ($env:AUTH_MODE -eq 'entra' -and $password.Name -eq 'PASSWORD') {
+        if ($env:AUTH_MODE -eq 'entra') {
             continue
         }
         $label = if ($password.Name -eq 'PASSWORD') { 'password' } else { 'admin password' }

@@ -3,5 +3,5 @@
 {% block content %}
   <h1 class="govuk-heading-l">{{ pageTitle }}</h1>
   <p class="govuk-body">{{ message }}</p>
-  <p class="govuk-body"><a class="govuk-link" href="/login">Try signing in again</a></p>
+  <p class="govuk-body"><a class="govuk-link" href="{{ linkHref or '/login' }}">{{ linkText or 'Try signing in again' }}</a></p>
 {% endblock %}
