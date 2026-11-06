@@ -8,10 +8,31 @@ import {
 } from '#/server/plugins/auth.js'
 import { safeNext } from './controller.js'
 import { CleanseApiError } from '#/server/common/helpers/cleanse/client.js'
+import { createWebIdentityTokenSource } from '#/server/common/helpers/web-identity-token.js'
+
+/** The app roles defined on the app registration. The ID token lists the ones a user holds. */
+const entraRoles = { user: 'cleanse-user', admin: 'cleanse-admin' }
 
 const transactionKey = 'entraTransaction'
 const transactionTtl = 10 * 60 * 1000
 const guid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const failureMessages = {
+  400: 'Your sign-in could not be completed. Try again or ask the application owner to check your access.',
+  403: 'Your account does not have access to this service. Ask the application owner to give you access.',
+  503: 'The sign-in service is unavailable. Try again.'
+}
+
+/** The kind of failure, never its message: Entra's OAuth error code, or a local error's code or type. */
+function failureReason(error) {
+  const reason = String(
+    (error instanceof oidc.ResponseBodyError
+      ? error.error
+      : (error?.code ?? error?.cause?.name ?? error?.name)) ?? 'unknown'
+  )
+  // Only an identifier is logged: free text could carry personal data.
+  return /^[\w.-]{1,64}$/.test(reason) ? reason : 'unknown'
+}
 
 export function validateEntraConfig() {
   if (!isEntra()) {
@@ -33,8 +54,16 @@ export function validateEntraConfig() {
     }
     config.set(`auth.entra.${name}`, settings[name].toLowerCase())
   }
-  if (!settings.clientSecret.trim()) {
-    throw new Error('ENTRA_CLIENT_SECRET is required in Entra mode')
+  if (settings.clientAuth === 'federated') {
+    if (!settings.federatedAudience.trim()) {
+      throw new Error(
+        'ENTRA_FEDERATED_AUDIENCE is required when ENTRA_CLIENT_AUTH is federated'
+      )
+    }
+  } else if (!settings.clientSecret.trim()) {
+    throw new Error(
+      'ENTRA_CLIENT_SECRET is required when ENTRA_CLIENT_AUTH is secret'
+    )
   }
   for (const name of ['redirectUri', 'postLogoutRedirectUri']) {
     const url = new URL(settings[name])
@@ -64,6 +93,23 @@ export function validateEntraConfig() {
   }
 }
 
+/**
+ * Client authentication with a CDP STS token in place of a secret: the app registration's
+ * federated credential trusts this service's IAM role, for this audience only.
+ */
+function federatedClientAuth(audience) {
+  const token = createWebIdentityTokenSource({ audience })
+
+  return async (_as, client, body) => {
+    body.set('client_id', client.client_id)
+    body.set(
+      'client_assertion_type',
+      'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
+    )
+    body.set('client_assertion', await token())
+  }
+}
+
 export function createEntraHandlers() {
   let discovered
   let discoveredFor
@@ -71,13 +117,20 @@ export function createEntraHandlers() {
   async function client() {
     const fingerprint = entraFingerprint()
     if (!discovered || discoveredFor !== fingerprint) {
-      const { tenantId, clientId, clientSecret } = config.get('auth.entra')
+      const {
+        tenantId,
+        clientId,
+        clientAuth,
+        clientSecret,
+        federatedAudience
+      } = config.get('auth.entra')
+      const federated = clientAuth === 'federated'
       discoveredFor = fingerprint
       discovered = oidc.discovery(
         new URL(`https://login.microsoftonline.com/${tenantId}/v2.0`),
         clientId,
-        clientSecret,
-        undefined,
+        federated ? undefined : clientSecret,
+        federated ? federatedClientAuth(federatedAudience) : undefined,
         { execute: [oidc.enableNonRepudiationChecks], timeout: 10 }
       )
     }
@@ -89,14 +142,15 @@ export function createEntraHandlers() {
     }
   }
 
-  function failure(request, h, status) {
-    // OIDC errors may contain codes, tokens or profile data. Log only the outcome.
+  function failure(request, h, status, reason) {
+    // OIDC errors may contain codes, tokens or profile data. Log only the outcome and its kind.
     request.logger.warn(
       {
         event: {
           category: 'authentication',
           action: 'entra-login',
-          outcome: 'failure'
+          outcome: 'failure',
+          ...(reason ? { reason } : {})
         }
       },
       'Entra sign-in did not complete'
@@ -104,10 +158,7 @@ export function createEntraHandlers() {
     return h
       .view('login/entra-error', {
         pageTitle: 'Could not sign in',
-        message:
-          status === 503
-            ? 'The sign-in service is unavailable. Try again.'
-            : 'Your sign-in could not be completed. Try again or ask the application owner to check your access.'
+        message: failureMessages[status]
       })
       .code(status)
   }
@@ -181,6 +232,11 @@ export function createEntraHandlers() {
         ) {
           return failure(request, h, 400)
         }
+        const roles = Array.isArray(claims.roles) ? claims.roles : []
+        const admin = roles.includes(entraRoles.admin)
+        if (!admin && !roles.includes(entraRoles.user)) {
+          return failure(request, h, 403, 'no-cleanse-role')
+        }
         const user = await request.cleanse.recordLogin({
           issuer: claims.iss,
           subject: claims.sub,
@@ -192,7 +248,7 @@ export function createEntraHandlers() {
         if (typeof user.id !== 'string' || !guid.test(user.id)) {
           throw new Error('Invalid user record response')
         }
-        signInEntra(request, user)
+        signInEntra(request, user, { admin })
         request.logger.info(
           {
             event: {
@@ -205,7 +261,12 @@ export function createEntraHandlers() {
         )
         return h.redirect(safeNext(transaction.next, '/'))
       } catch (error) {
-        return failure(request, h, error instanceof CleanseApiError ? 503 : 400)
+        return failure(
+          request,
+          h,
+          error instanceof CleanseApiError ? 503 : 400,
+          failureReason(error)
+        )
       }
     },
 

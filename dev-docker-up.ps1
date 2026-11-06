@@ -9,7 +9,8 @@ sessions in an encrypted cookie. Waits until the stack is healthy, checks that i
 in and reads the status page back.
 
 Loads local settings and secrets from the ignored .env file. Entra mode requires
-ENTRA_TENANT_ID, ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET. The admin area retains its password.
+ENTRA_TENANT_ID, ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET, and the admin area then needs the
+cleanse-admin app role rather than its password.
 
 With -Backend local, the default, compose.local-backend.yml adds the backend's own stack from the
 ls-cleanse-api repository, which must be checked out next to this one, as ../ls-cleanse-api:

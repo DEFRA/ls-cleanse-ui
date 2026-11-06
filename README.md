@@ -74,11 +74,15 @@ npm start
 
 `AUTH_MODE` selects how users sign in:
 
-- `entra` — Microsoft Entra ID, used in CDP. Set `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID` and
-  `ENTRA_CLIENT_SECRET` for an app registration whose redirect URI is
-  `http://localhost:3000/auth/entra/callback` locally. [ENTRA-AUTH.md](ENTRA-AUTH.md) describes
-  setting up a test tenant and adding and removing users.
-- `password` — the default locally. Users sign in with the value of `PASSWORD`.
+- `entra` — Microsoft Entra ID, used in production. A user needs the `cleanse-user` or
+  `cleanse-admin` app role to sign in, and only `cleanse-admin` opens the admin area. On CDP the
+  service proves its identity to Entra with a federated credential (`ENTRA_CLIENT_AUTH=federated`,
+  the production default), so no client secret is stored. Locally, set `ENTRA_TENANT_ID`,
+  `ENTRA_CLIENT_ID` and `ENTRA_CLIENT_SECRET` for a test-tenant app registration whose redirect URI
+  is `http://localhost:3000/auth/entra/callback`. [ENTRA-AUTH.md](ENTRA-AUTH.md) describes setting
+  up a test tenant and adding and removing users.
+- `password` — the default, used locally and in CDP's other environments. Users sign in with the
+  value of `PASSWORD`, and the admin area asks for `ADMIN_PASSWORD` as well.
 
 ## Configuration
 
@@ -86,25 +90,29 @@ Settings are read from environment variables; `src/config/config.js` lists them 
 defaults. In CDP, non-secret values live in `DEFRA/cdp-app-config` and secrets are set in the CDP
 Portal; both take effect on the next deployment.
 
-| Variable                  | Purpose                                                              | Default                                     |
-| ------------------------- | -------------------------------------------------------------------- | ------------------------------------------- |
-| `PORT`                    | Port the service listens on                                          | `3000`                                      |
-| `CLEANSE_API_URL`         | Base URL of `ls-cleanse-api`                                         | `http://localhost:8085`                     |
-| `CLEANSE_API_AUTH`        | How the back-end is called: `stsJwt` (CDP service token) or `apiKey` | `stsJwt` in production, otherwise `apiKey`  |
-| `CLEANSE_API_KEY`         | Sent as `x-cleanse-api-key` when `CLEANSE_API_AUTH` is `apiKey`      | `local-development-key`                     |
-| `CLEANSE_API_AUDIENCE`    | Audience of the CDP service token                                    | `ls-cleanse-api`                            |
-| `CLEANSE_API_TIMEOUT`     | Back-end request timeout, in milliseconds                            | `20000`                                     |
-| `CLEANSE_GATEWAY_KEY`     | Sent as `x-api-key` to the CDP developer gateway only                | not sent                                    |
-| `CLEANSE_GROUP_ID`        | The rule group shown                                                 | `cts-sam`                                   |
-| `AUTH_MODE`               | `entra` or `password`                                                | `password`                                  |
-| `ENTRA_TENANT_ID`         | Entra tenant                                                         |                                             |
-| `ENTRA_CLIENT_ID`         | Entra app registration (client) ID                                   |                                             |
-| `ENTRA_CLIENT_SECRET`     | Entra client secret                                                  |                                             |
-| `ENTRA_REDIRECT_URI`      | Sign-in callback URL                                                 | `http://localhost:3000/auth/entra/callback` |
-| `PASSWORD`                | Sign-in password in `password` mode                                  |                                             |
-| `SESSION_COOKIE_PASSWORD` | Key that encrypts the session cookie; at least 32 characters         | a public placeholder — always set it        |
-| `SESSION_COOKIE_TTL`      | Session lifetime, in milliseconds                                    | 4 hours                                     |
-| `LOG_LEVEL`               | Log level                                                            | `info`                                      |
+| Variable                         | Purpose                                                                                    | Default                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| `PORT`                           | Port the service listens on                                                                | `3000`                                        |
+| `CLEANSE_API_URL`                | Base URL of `ls-cleanse-api`                                                               | `http://localhost:8085`                       |
+| `CLEANSE_API_AUTH`               | How the back-end is called: `stsJwt` (CDP service token) or `apiKey`                       | `stsJwt` in production, otherwise `apiKey`    |
+| `CLEANSE_API_KEY`                | Sent as `x-cleanse-api-key` when `CLEANSE_API_AUTH` is `apiKey`                            | `local-development-key`                       |
+| `CLEANSE_API_AUDIENCE`           | Audience of the CDP service token                                                          | `ls-cleanse-api`                              |
+| `CLEANSE_API_TIMEOUT`            | Back-end request timeout, in milliseconds                                                  | `20000`                                       |
+| `CLEANSE_GATEWAY_KEY`            | Sent as `x-api-key` to the CDP developer gateway only                                      | not sent                                      |
+| `CLEANSE_GROUP_ID`               | The rule group shown                                                                       | `cts-sam`                                     |
+| `AUTH_MODE`                      | `entra` or `password`                                                                      | `password`                                    |
+| `ENTRA_TENANT_ID`                | Entra tenant                                                                               |                                               |
+| `ENTRA_CLIENT_ID`                | Entra app registration (client) ID                                                         |                                               |
+| `ENTRA_CLIENT_AUTH`              | How the service proves itself to Entra: `federated` (CDP federated credential) or `secret` | `federated` in production, otherwise `secret` |
+| `ENTRA_FEDERATED_AUDIENCE`       | Audience of the STS token sent to Entra; must match the federated credential               | `api://AzureADTokenExchange`                  |
+| `ENTRA_CLIENT_SECRET`            | Entra client secret, when `ENTRA_CLIENT_AUTH` is `secret`                                  |                                               |
+| `ENTRA_REDIRECT_URI`             | Sign-in callback URL                                                                       | `http://localhost:3000/auth/entra/callback`   |
+| `ENTRA_POST_LOGOUT_REDIRECT_URI` | Where Entra sends the browser after sign-out                                               | `http://localhost:3000/login`                 |
+| `PASSWORD`                       | Sign-in password in `password` mode                                                        |                                               |
+| `ADMIN_PASSWORD`                 | Admin area password in `password` mode; Entra mode uses the `cleanse-admin` role instead   |                                               |
+| `SESSION_COOKIE_PASSWORD`        | Key that encrypts the session cookie; at least 32 characters                               | a public placeholder — always set it          |
+| `SESSION_COOKIE_TTL`             | Session lifetime, in milliseconds                                                          | 4 hours                                       |
+| `LOG_LEVEL`                      | Log level                                                                                  | `info`                                        |
 
 Sessions are held in an encrypted browser cookie, so the service needs no session store.
 

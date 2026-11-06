@@ -4,7 +4,8 @@ Runs ls-cleanse-ui on Node with live reload, against a local or a deployed Clean
 
 .DESCRIPTION
 Loads local settings and secrets from the ignored .env file. Entra mode requires
-ENTRA_TENANT_ID, ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET. The admin area retains its password.
+ENTRA_TENANT_ID, ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET, and the admin area then needs the
+cleanse-admin app role rather than its password.
 
 .PARAMETER Backend
 local  The backend's Docker stack on http://localhost:8085 (../ls-cleanse-api/dev-docker-up.ps1). The default.

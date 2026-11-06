@@ -1,10 +1,23 @@
 import { safeNext, signInController, signOutController } from './controller.js'
 import { createEntraHandlers, validateEntraConfig } from './entra.js'
 import { isEntra, isSignedInTo, signOut } from '#/server/plugins/auth.js'
+import { statusCodes } from '#/server/common/constants/status-codes.js'
+
+const adminRoleMissing = (h) =>
+  h
+    .view('login/entra-error', {
+      pageTitle: 'You cannot use the admin area',
+      message:
+        'The admin area is only for admins. If you have just been made an admin, sign out and sign in again.',
+      linkHref: '/logout',
+      linkText: 'Sign out'
+    })
+    .code(statusCodes.forbidden)
 
 /**
  * Signing in and out. The service sign-in page is the only page open to everyone; the admin one
- * is behind the service password, so the admin password is only asked of someone signed in.
+ * is behind the service password, so the admin password is only asked of someone signed in. In
+ * Entra mode there is no admin password: the cleanse-admin app role opens the admin area.
  */
 export const login = {
   plugin: {
@@ -64,13 +77,21 @@ export const login = {
           method: 'GET',
           path: '/admin/login',
           options: { auth: 'service' },
-          handler: admin.show
+          handler: (request, h) =>
+            isEntra() && !isSignedInTo(request, 'admin')
+              ? adminRoleMissing(h)
+              : admin.show(request, h)
         },
         {
           method: 'POST',
           path: '/admin/login',
           options: { auth: 'service' },
-          handler: admin.submit
+          handler: (request, h) =>
+            isEntra()
+              ? h
+                  .response('Admin access comes from your Microsoft account.')
+                  .code(405)
+              : admin.submit(request, h)
         },
         {
           method: 'GET',
