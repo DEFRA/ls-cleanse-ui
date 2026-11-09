@@ -22,25 +22,7 @@ function stubFetch(response) {
 const urlOf = (fetchSpy) => new URL(fetchSpy.mock.calls[0][0])
 
 describe('#createCleanseClient query building', () => {
-  test('sends scoped import name-matching context in multipart, never a secret', async () => {
-    const fetchSpy = stubFetch(ok({ id: 'import-id' }))
-    const client = createCleanseClient({ auth: { headers: async () => ({}) } })
-    const tenantId = crypto.randomUUID()
-    const clientId = crypto.randomUUID()
-    await client.uploadImport({
-      groupId: 'cts-sam',
-      fileName: 'spol.csv',
-      content: Buffer.from('header'),
-      tenantId,
-      clientId
-    })
-    const form = fetchSpy.mock.calls[0][1].body
-    expect(form.get('tenantId')).toBe(tenantId)
-    expect(form.get('clientId')).toBe(clientId)
-    expect(form.get('file').name).toBe('spol.csv')
-  })
-
-  test('omits user-directory scope for password-mode imports', async () => {
+  test('sends an import as multipart without any directory scope, never a secret', async () => {
     const fetchSpy = stubFetch(ok({ id: 'import-id' }))
     const client = createCleanseClient({ auth: { headers: async () => ({}) } })
     await client.uploadImport({
@@ -49,8 +31,20 @@ describe('#createCleanseClient query building', () => {
       content: Buffer.from('header')
     })
     const form = fetchSpy.mock.calls[0][1].body
+    expect(form.get('groupId')).toBe('cts-sam')
+    expect(form.get('file').name).toBe('spol.csv')
     expect(form.has('tenantId')).toBe(false)
     expect(form.has('clientId')).toBe(false)
+  })
+
+  test('adds users by posting their email addresses', async () => {
+    const fetchSpy = stubFetch(ok({ created: [], existing: [] }))
+    const client = createCleanseClient({ auth: { headers: async () => ({}) } })
+    await client.registerUsers({ emails: ['a@example.test'] })
+    const [url, options] = fetchSpy.mock.calls[0]
+    expect(new URL(url).pathname).toBe('/v1/users')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(options.body)).toEqual({ emails: ['a@example.test'] })
   })
 
   test('Should drop empty values rather than send them as blank filters', async () => {

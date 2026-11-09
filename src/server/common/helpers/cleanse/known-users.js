@@ -1,18 +1,13 @@
-import { config } from '#/config/config.js'
-
-/** Fetch every page so users beyond the first page remain assignable and filterable. */
+/**
+ * Every page of the directory, so users beyond the first page remain assignable and filterable.
+ * It includes people who have not signed in yet, whatever the sign-in mode.
+ */
 export async function knownUsers(client) {
-  const { tenantId, clientId } = config.get('auth.entra')
   const users = []
   let pageNumber = 1
   let totalCount
   do {
-    const page = await client.searchUsers({
-      tenantId,
-      clientId,
-      pageNumber,
-      pageSize: 50
-    })
+    const page = await client.searchUsers({ pageNumber, pageSize: 50 })
     if (!Array.isArray(page.items) || !Number.isSafeInteger(page.totalCount)) {
       throw new Error('The user directory returned an invalid page')
     }
@@ -26,6 +21,7 @@ export async function knownUsers(client) {
   return users
 }
 
+/** People who share a name are told apart by email, or by ID when no email is recorded. */
 export function userOptions(users, selected) {
   const nameCounts = new Map()
   for (const user of users) {
@@ -36,7 +32,7 @@ export function userOptions(users, selected) {
     value: user.id,
     text:
       nameCounts.get(user.fullName.trim().toLowerCase()) > 1
-        ? `${user.fullName} (${user.id})`
+        ? `${user.fullName} (${user.email ?? user.id})`
         : user.fullName,
     selected: selected === user.id
   }))

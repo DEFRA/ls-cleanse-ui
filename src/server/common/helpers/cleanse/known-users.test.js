@@ -26,16 +26,27 @@ describe('Known user choices', () => {
     ).rejects.toThrow('incomplete page')
   })
 
-  test('disambiguates duplicate names using stable IDs', () => {
+  test('loads every page without any Entra scope', async () => {
+    const client = {
+      searchUsers: vi.fn().mockResolvedValue({ items: [], totalCount: 0 })
+    }
+    await knownUsers(client)
+    expect(client.searchUsers).toHaveBeenCalledWith({
+      pageNumber: 1,
+      pageSize: 50
+    })
+  })
+
+  test('disambiguates duplicate names by email, or by ID without one', () => {
     const options = userOptions(
       [
-        { id: 'first', fullName: 'Same Name' },
+        { id: 'first', fullName: 'Same Name', email: 'same.name@example.test' },
         { id: 'second', fullName: 'same name' },
         { id: 'third', fullName: 'Unique Name' }
       ],
       'second'
     )
-    expect(options[0].text).toBe('Same Name (first)')
+    expect(options[0].text).toBe('Same Name (same.name@example.test)')
     expect(options[1]).toMatchObject({
       text: 'same name (second)',
       selected: true

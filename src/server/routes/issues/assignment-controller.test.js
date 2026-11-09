@@ -137,11 +137,17 @@ describe('Issue assignment', () => {
     expect((await submit({ userId })).statusCode).toBe(409)
   })
 
-  test('disables assignment without calling the backend in password mode', async () => {
+  test('works in password mode, where nobody has signed in with Entra', async () => {
     config.set('auth.mode', 'password')
-    expect(
-      (await server.inject({ url: path, auth: signedIn })).statusCode
-    ).toBe(404)
-    expect(fetch).not.toHaveBeenCalled()
+    const page = await server.inject({ url: path, auth: signedIn })
+    expect(page.statusCode).toBe(200)
+    expect(page.result).toContain(userId)
+    expect(page.result).toContain('SPOL imports no longer change')
+    const response = await submit({ userId })
+    expect(response.statusCode).toBe(302)
+    const mutation = fetch.mock.calls.find(
+      ([, options]) => options?.method === 'PUT'
+    )
+    expect(JSON.parse(mutation[1].body)).toEqual({ userId, expectedVersion: 4 })
   })
 })

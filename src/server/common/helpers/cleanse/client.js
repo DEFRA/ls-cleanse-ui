@@ -179,6 +179,8 @@ export function createCleanseClient(options = {}) {
     return {
       recordLogin: (body) => request('POST', '/v1/users/logins', { body }),
 
+      registerUsers: (body) => request('POST', '/v1/users', { body }),
+
       searchUsers: (query) => request('GET', '/v1/users', { query }),
 
       assignUser: (id, body) =>
@@ -241,13 +243,9 @@ export function createCleanseClient(options = {}) {
       getImportRejections: (id, query) =>
         request('GET', `/v1/imports/${segment(id)}/rejections`, { query }),
 
-      uploadImport: ({ groupId, fileName, content, tenantId, clientId }) => {
+      uploadImport: ({ groupId, fileName, content }) => {
         const form = new FormData()
         form.append('groupId', groupId)
-        if (tenantId && clientId) {
-          form.append('tenantId', tenantId)
-          form.append('clientId', clientId)
-        }
         form.append('file', new Blob([content], { type: 'text/csv' }), fileName)
         return request('POST', '/v1/imports', { form })
       }

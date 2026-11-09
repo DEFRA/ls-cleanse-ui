@@ -1,0 +1,43 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to users", href: "/admin/users" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#emails" }]
+      }) }}
+    {% endif %}
+
+    <form method="post" novalidate>
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+
+      {{ govukTextarea({
+        id: "emails",
+        name: "emails",
+        rows: 8,
+        value: emails,
+        label: { text: "Add users", classes: "govuk-label--l", isPageHeading: true },
+        hint: { text: "Enter their email addresses, separated by commas or on separate lines. Each name is taken from the address until the person first signs in. Anyone already known is left as they are." },
+        errorMessage: { text: error } if error
+      }) }}
+
+      {{ govukButton({ text: "Add users" }) }}
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}

@@ -5,8 +5,6 @@ import { createServer } from '#/server/server.js'
 import { signedIn } from '#/test-helpers/sign-in.js'
 
 const userId = randomUUID()
-const tenantId = randomUUID()
-const clientId = randomUUID()
 const json = (body) => new Response(JSON.stringify(body), { status: 200 })
 
 describe('Issue assignee filter', () => {
@@ -15,8 +13,6 @@ describe('Issue assignee filter', () => {
   beforeAll(async () => {
     server = await createServer()
     await server.initialize()
-    config.set('auth.entra.tenantId', tenantId)
-    config.set('auth.entra.clientId', clientId)
   })
   beforeEach(() => {
     config.set('auth.mode', 'entra')
@@ -53,8 +49,6 @@ describe('Issue assignee filter', () => {
   })
   afterAll(async () => {
     await server.stop({ timeout: 0 })
-    config.set('auth.entra.tenantId', '')
-    config.set('auth.entra.clientId', '')
   })
 
   const searchQuery = () =>
@@ -62,7 +56,7 @@ describe('Issue assignee filter', () => {
       fetch.mock.calls.find(([url]) => String(url).includes('/v1/issues?'))[0]
     ).searchParams
 
-  test('filters by stable ID, scopes user lookup and keeps selection in pagination', async () => {
+  test('filters by stable ID, loads the whole directory and keeps selection in pagination', async () => {
     const response = await server.inject({
       url: `/issues?filtered=true&assignee=${userId}`,
       auth: signedIn
@@ -73,8 +67,8 @@ describe('Issue assignee filter', () => {
     const usersQuery = new URL(
       fetch.mock.calls.find(([url]) => String(url).includes('/v1/users?'))[0]
     ).searchParams
-    expect(usersQuery.get('tenantId')).toBe(tenantId)
-    expect(usersQuery.get('clientId')).toBe(clientId)
+    expect(usersQuery.has('tenantId')).toBe(false)
+    expect(usersQuery.has('clientId')).toBe(false)
     expect(response.result).toMatch(
       new RegExp(`value="${userId}"[^>]*selected`)
     )
@@ -83,8 +77,20 @@ describe('Issue assignee filter', () => {
     expect(response.result).not.toContain('<Test Person>')
   })
 
-  test('supports unassigned in password mode without exposing a user directory', async () => {
+  test('offers the same choices in password mode', async () => {
     config.set('auth.mode', 'password')
+    const response = await server.inject({
+      url: `/issues?filtered=true&assignee=${userId}`,
+      auth: signedIn
+    })
+    expect(response.statusCode).toBe(200)
+    expect(searchQuery().get('assignedUserId')).toBe(userId)
+    expect(response.result).toMatch(
+      new RegExp(`value="${userId}"[^>]*selected`)
+    )
+  })
+
+  test('filters to unassigned issues', async () => {
     const response = await server.inject({
       url: '/issues?filtered=true&assignee=unassigned',
       auth: signedIn
@@ -92,10 +98,6 @@ describe('Issue assignee filter', () => {
     expect(response.statusCode).toBe(200)
     expect(searchQuery().get('unassigned')).toBe('true')
     expect(searchQuery().has('assignedUserId')).toBe(false)
-    expect(
-      fetch.mock.calls.some(([url]) => String(url).includes('/v1/users?'))
-    ).toBe(false)
-    expect(response.result).not.toContain(`value="${userId}"`)
   })
 
   test('does not send assignment constraints for anyone', async () => {

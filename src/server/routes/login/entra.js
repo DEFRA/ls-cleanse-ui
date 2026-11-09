@@ -34,6 +34,12 @@ function failureReason(error) {
   return /^[\w.-]{1,64}$/.test(reason) ? reason : 'unknown'
 }
 
+/** A claim the backend may use, or undefined when it is absent or could not be an address. */
+const optionalClaim = (value) =>
+  typeof value === 'string' && value.trim() && value.length <= 320
+    ? value.trim()
+    : undefined
+
 export function validateEntraConfig() {
   if (!isEntra()) {
     return
@@ -180,7 +186,7 @@ export function createEntraHandlers() {
         request.yar.set(transactionKey, transaction)
         const url = oidc.buildAuthorizationUrl(clientConfig, {
           redirect_uri: config.get('auth.entra.redirectUri'),
-          scope: 'openid profile',
+          scope: 'openid profile email',
           response_mode: 'query',
           code_challenge: await oidc.calculatePKCECodeChallenge(verifier),
           code_challenge_method: 'S256',
@@ -243,7 +249,10 @@ export function createEntraHandlers() {
           tenantId: claims.tid,
           objectId: claims.oid,
           clientId: settings.clientId,
-          fullName: claims.name
+          fullName: claims.name,
+          // Either may match an address an admin added before this person's first sign-in.
+          email: optionalClaim(claims.email),
+          preferredUsername: optionalClaim(claims.preferred_username)
         })
         if (typeof user.id !== 'string' || !guid.test(user.id)) {
           throw new Error('Invalid user record response')

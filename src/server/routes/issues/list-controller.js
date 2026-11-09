@@ -1,6 +1,5 @@
 import { config } from '#/config/config.js'
 import { presentIssue } from './presenter.js'
-import { isEntra } from '#/server/plugins/auth.js'
 import { CleanseApiError } from '#/server/common/helpers/cleanse/client.js'
 import {
   knownUsers,
@@ -144,26 +143,24 @@ export const listController = {
   async handler(request, h) {
     const filters = readFilters(request.query)
     const groupId = config.get('cleanse.groupId')
-    let users = []
-    if (isEntra()) {
-      try {
-        users = await knownUsers(request.cleanse)
-      } catch (error) {
-        if (!(error instanceof CleanseApiError)) {
-          throw error
-        }
-        request.logger.error(
-          { status: error.status },
-          'Could not load assignee choices'
-        )
-        return h
-          .view('error/index', {
-            pageTitle: 'Assignee choices unavailable',
-            heading: 'Assignee choices unavailable',
-            message: 'The user directory could not be loaded. Try again.'
-          })
-          .code(503)
+    let users
+    try {
+      users = await knownUsers(request.cleanse)
+    } catch (error) {
+      if (!(error instanceof CleanseApiError)) {
+        throw error
       }
+      request.logger.error(
+        { status: error.status },
+        'Could not load assignee choices'
+      )
+      return h
+        .view('error/index', {
+          pageTitle: 'Assignee choices unavailable',
+          heading: 'Assignee choices unavailable',
+          message: 'The user directory could not be loaded. Try again.'
+        })
+        .code(503)
     }
     const validAssignee = [
       'all',

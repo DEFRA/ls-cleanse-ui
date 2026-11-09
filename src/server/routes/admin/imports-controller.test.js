@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { vi } from 'vitest'
 import { config } from '#/config/config.js'
 import { createServer } from '#/server/server.js'
@@ -6,21 +5,15 @@ import { signedInAsAdmin } from '#/test-helpers/sign-in.js'
 import { uploadImportController } from './imports-controller.js'
 
 describe('SPOL import assignment context', () => {
-  const tenantId = randomUUID()
-  const clientId = randomUUID()
   afterEach(() => {
     config.set('auth.mode', 'password')
-    config.set('auth.entra.tenantId', '')
-    config.set('auth.entra.clientId', '')
     vi.restoreAllMocks()
   })
 
   test.each(['entra', 'password'])(
-    'supplies directory scope only in %s mode',
+    'sends no directory scope in %s mode',
     async (mode) => {
       config.set('auth.mode', mode)
-      config.set('auth.entra.tenantId', tenantId)
-      config.set('auth.entra.clientId', clientId)
       const request = {
         payload: {
           file: {
@@ -36,12 +29,8 @@ describe('SPOL import assignment context', () => {
       const h = { redirect: vi.fn() }
       await uploadImportController.handler(request, h)
       const body = request.cleanse.uploadImport.mock.calls[0][0]
-      if (mode === 'entra') {
-        expect(body).toMatchObject({ tenantId, clientId })
-      } else {
-        expect(body).not.toHaveProperty('tenantId')
-        expect(body).not.toHaveProperty('clientId')
-      }
+      expect(body).not.toHaveProperty('tenantId')
+      expect(body).not.toHaveProperty('clientId')
       expect(h.redirect).toHaveBeenCalledWith('/admin/imports/import-id')
     }
   )
@@ -80,7 +69,7 @@ describe('SPOL import assignment context', () => {
       })
       expect(response.statusCode).toBe(200)
       expect(response.result).toContain('Import warnings and rejected rows')
-      expect(response.result).toContain('Assignment warnings do not prevent')
+      expect(response.result).toContain('Warnings do not prevent')
       expect(response.result).toContain('&lt;Same Name&gt;')
       expect(response.result).not.toContain('1 row could not be applied')
     } finally {
