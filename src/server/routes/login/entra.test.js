@@ -191,7 +191,7 @@ describe('Entra sign-in', () => {
 
   test('uses code flow with PKCE and persists only a validated user', async () => {
     await begin()
-    expect(authorize.searchParams.get('scope')).toBe('openid profile')
+    expect(authorize.searchParams.get('scope')).toBe('openid profile email')
     expect(authorize.searchParams.get('code_challenge_method')).toBe('S256')
     expect(authorize.searchParams.has('client_secret')).toBe(false)
     const result = await finish()
@@ -212,6 +212,19 @@ describe('Entra sign-in', () => {
       admin: false
     })
     expect((await finish()).statusCode).toBe(400)
+  })
+
+  test('passes the email claims that let a first sign-in claim an added user', async () => {
+    claimsOverride = {
+      email: ' Test.Person@example.test ',
+      preferred_username: 'test.person@example.test'
+    }
+    await begin()
+    expect((await finish()).statusCode).toBe(302)
+    expect(loginBody).toMatchObject({
+      email: 'Test.Person@example.test',
+      preferredUsername: 'test.person@example.test'
+    })
   })
 
   test('opens the admin area with the cleanse-admin role, never the admin password', async () => {

@@ -36,8 +36,11 @@
    - Do not add direct user assignments or other groups.
 8. Leave implicit grants and public-client flows disabled. No group claims or
    Graph directory permissions are required: the ID token carries the app
-   roles. The application will request `openid profile`; grant consent if your
-   tenant requires it.
+   roles. The application requests `openid profile email`. Under **API
+   permissions**, add the Microsoft Graph delegated permissions `openid`,
+   `profile` and `email`, and grant consent if your tenant requires it. Cleanse
+   uses the `email` claim, or `preferred_username` if `email` is missing, to
+   link a first sign-in to a user who was added in advance.
 
 ### Local application configuration
 
@@ -73,6 +76,12 @@ Entra, and only a member of `Cleanse-Test-Admins` can open `/admin`.
 4. Allow time for the change to propagate, then ask them to sign in to Cleanse.
    After their first successful sign-in, the user directory records
    their identity, full name and last-logon time for use in assignment.
+
+To assign issues to someone before they first sign in, an admin can add their
+email address in **Admin > Users > Add users**. When they first sign in, Cleanse
+links them to that record by email address and replaces the name derived from
+the email address with their Entra name. Adding someone there does not let them
+sign in; access is still controlled by the groups above.
 
 To make someone an admin, add them to `Cleanse-Test-Admins` in the same way.
 Roles are read at sign-in, so a change applies from the user's next sign-in.

@@ -49,6 +49,12 @@
         <code>1st</code>, <code>2nd</code> and <code>3rd Contact Date</code> and
         <code>Letter/email sent</code> are optional, and become case history entries.
       </p>
+      <p class="govuk-body">
+        <code>Assigned to</code> is optional. Use <strong>Export CSV with schema</strong> in
+        SharePoint, which gives email addresses there rather than names. An address nobody has
+        yet becomes a new user. Once someone changes an issue's assignment in Cleanse, imports no
+        longer change it.
+      </p>
     {% endset %}
 
     {{ govukDetails({

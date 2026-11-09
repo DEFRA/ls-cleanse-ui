@@ -79,11 +79,15 @@ describe('#createAnonymiser', () => {
     const real = {
       id: crypto.randomUUID(),
       fullName: 'Real Person',
+      email: 'real.person@defra.gov.uk',
       subject: 'Real Subject',
       objectId: crypto.randomUUID()
     }
     const calls = {
       searchUsers: vi.fn().mockResolvedValue({ items: [real], totalCount: 1 }),
+      registerUsers: vi
+        .fn()
+        .mockResolvedValue({ created: [real], existing: [real] }),
       searchIssues: vi
         .fn()
         .mockResolvedValue({ items: [realIssue], totalCount: 1 }),
@@ -97,8 +101,13 @@ describe('#createAnonymiser', () => {
     const fake = page.items[0]
     expect(fake.id).not.toBe(real.id)
     expect(fake.fullName).not.toBe(real.fullName)
+    expect(fake.email).not.toBe(real.email)
+    expect(fake.email).toMatch(/@example\.test$/)
     expect(fake.subject).not.toBe(real.subject)
     expect(fake.objectId).not.toBe(real.objectId)
+    const registered = await wrapped.registerUsers({ emails: [real.email] })
+    expect(registered.created[0]).toEqual(fake)
+    expect(registered.existing[0]).toEqual(fake)
     await wrapped.assignUser('ISSUEID', { userId: fake.id, expectedVersion: 3 })
     expect(calls.assignUser).toHaveBeenCalledWith('ISSUEID', {
       userId: real.id,

@@ -15,7 +15,7 @@
     {{ govukErrorSummary({ titleText: "There is a problem", errorList: [{ text: error, href: "#userId" }] }) }}
   {% endif %}
   <p class="govuk-body">Currently assigned to: {{ issue.assignedTo or "Unassigned" }}</p>
-  <p class="govuk-body">Only people who have signed in are listed. Group membership is managed in Entra; this list can include people who have since left.</p>
+  <p class="govuk-body">Everyone Cleanse knows about is listed, including people who have not signed in yet. An admin can add people under Admin, Users.</p>
   <form method="post">
     <input type="hidden" name="crumb" value="{{ crumb }}">
     <input type="hidden" name="expectedVersion" value="{{ issue.version }}">
@@ -23,7 +23,7 @@
       id: "userId",
       name: "userId",
       label: { text: "Assign to" },
-      hint: { text: "Choose a user, or Unassigned to remove the assignment." },
+      hint: { text: "Choose a user, or Unassigned to remove the assignment. Once you change it here, SPOL imports no longer change who this issue is assigned to." },
       errorMessage: { text: error } if error,
       items: userItems
     }) }}

@@ -194,6 +194,11 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
   const personName = fakeOf('person', (f) => f.person.fullName(), {
     searchable: false
   })
+  const personEmail = fakeOf(
+    'email',
+    (f) => f.internet.email({ provider: 'example.test' }).toLowerCase(),
+    { searchable: false }
+  )
   const personId = (value) =>
     value === 'system'
       ? value
@@ -281,22 +286,21 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
 
   const rejection = (value) => rewrite(value, { detail: hide })
 
+  const user = (value) =>
+    rewrite(value, {
+      id: userId,
+      fullName: personName,
+      email: personEmail,
+      subject: personId,
+      objectId: personId
+    })
+  const users = (list) => (Array.isArray(list) ? list.map(user) : list)
+
   const responses = {
-    recordLogin: (value) =>
-      rewrite(value, {
-        id: userId,
-        fullName: personName,
-        subject: personId,
-        objectId: personId
-      }),
-    searchUsers: page((value) =>
-      rewrite(value, {
-        id: userId,
-        fullName: personName,
-        subject: personId,
-        objectId: personId
-      })
-    ),
+    recordLogin: user,
+    registerUsers: (value) =>
+      rewrite(value, { created: users, existing: users }),
+    searchUsers: page(user),
     assignUser: issue,
     getGroupSummary: (value) => rewrite(value, { latestRun: run }),
     searchIssues: page(issue),

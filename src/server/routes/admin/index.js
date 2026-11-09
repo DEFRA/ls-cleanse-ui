@@ -11,8 +11,11 @@ import {
 } from './imports-controller.js'
 import { statusController } from './status-controller.js'
 import { resetController, performResetController } from './reset-controller.js'
-import { usersController } from './users-controller.js'
-import { isEntra } from '#/server/plugins/auth.js'
+import {
+  usersController,
+  addUsersController,
+  registerUsersController
+} from './users-controller.js'
 
 /** The admin menu. Reachable by URL and from the footer, never from the service navigation. */
 const menu = [
@@ -27,6 +30,12 @@ const menu = [
     href: '/admin/imports',
     description:
       'Upload a SharePoint extract and see which rows it could apply.'
+  },
+  {
+    text: 'Users',
+    href: '/admin/users',
+    description:
+      'Everyone issues can be assigned to and when they last signed in, and a way to add people before they first sign in.'
   },
   {
     text: 'Status',
@@ -47,16 +56,7 @@ export const adminHomeController = {
     h.view('admin/index', {
       pageTitle: 'Admin',
       groupId: config.get('cleanse.groupId'),
-      menu: isEntra()
-        ? [
-            ...menu,
-            {
-              text: 'Users',
-              href: '/admin/users',
-              description: 'Users who have signed in and their last logon time.'
-            }
-          ]
-        : menu
+      menu
     })
 }
 
@@ -81,6 +81,12 @@ export const admin = {
 
         { method: 'GET', path: '/admin/status', ...statusController },
         { method: 'GET', path: '/admin/users', ...usersController },
+        { method: 'GET', path: '/admin/users/add', ...addUsersController },
+        {
+          method: 'POST',
+          path: '/admin/users/add',
+          ...registerUsersController
+        },
 
         { method: 'GET', path: '/admin/reset', ...resetController },
         { method: 'POST', path: '/admin/reset', ...performResetController }

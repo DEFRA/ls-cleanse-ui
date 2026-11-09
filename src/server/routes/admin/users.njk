@@ -1,20 +1,26 @@
 {% extends 'layouts/page.njk' %}
 
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
 {% block content %}
   <p class="govuk-body"><a class="govuk-back-link" href="/admin">Back to admin</a></p>
+  {% if notification %}
+    {{ govukNotificationBanner({ type: "success", titleText: "Success", text: notification }) }}
+  {% endif %}
   <h1 class="govuk-heading-l">Users</h1>
   {% if error %}
     <p class="govuk-body">{{ error }}</p>
-  {% elif unavailable %}
-    <p class="govuk-body">User information is not available with the current sign-in method.</p>
   {% else %}
-    <p class="govuk-body">Users who have signed in to Cleanse. This is not a current group membership list. All times are UTC.</p>
+    <p class="govuk-body">Everyone issues can be assigned to: people who have signed in, and people added here or by a SPOL import before they first sign in. This is not a list of who may sign in, which is managed in Entra. All times are UTC.</p>
+    {{ govukButton({ text: "Add users", href: "/admin/users/add", classes: "govuk-button--secondary" }) }}
     {% if users | length %}
       <table class="govuk-table">
-        <caption class="govuk-table__caption govuk-table__caption--m">{{ total }} user{{ "s" if total != 1 }} who ha{{ "ve" if total != 1 else "s" }} signed in</caption>
+        <caption class="govuk-table__caption govuk-table__caption--m">{{ total }} user{{ "s" if total != 1 }}</caption>
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
             <th scope="col" class="govuk-table__header">Full name</th>
+            <th scope="col" class="govuk-table__header">Email</th>
             <th scope="col" class="govuk-table__header">Last logon (UTC)</th>
           </tr>
         </thead>
@@ -25,13 +31,20 @@
                 {{ user.fullName }}
                 <span class="govuk-body-s app-user-id">ID: {{ user.id }}</span>
               </th>
-              <td class="govuk-table__cell"><time datetime="{{ user.lastLoggedInAtUtc }}">{{ user.lastLogon }}</time></td>
+              <td class="govuk-table__cell">{{ user.email or "Not recorded" }}</td>
+              <td class="govuk-table__cell">
+                {% if user.lastLogon %}
+                  <time datetime="{{ user.lastLoggedInAtUtc }}">{{ user.lastLogon }}</time>
+                {% else %}
+                  Never
+                {% endif %}
+              </td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
     {% else %}
-      <p class="govuk-body">Nobody has signed in yet.</p>
+      <p class="govuk-body">Nobody has been added or signed in yet.</p>
     {% endif %}
     <nav aria-label="Pagination">
       {% if previous %}<a class="govuk-link govuk-!-margin-right-4" href="{{ previous }}">Previous page</a>{% endif %}
