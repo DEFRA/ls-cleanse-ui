@@ -1,4 +1,4 @@
-import { listController } from './list-controller.js'
+import { listController, groupedController } from './list-controller.js'
 import { detailController } from './detail-controller.js'
 import { assignmentController } from './assignment-controller.js'
 import {
@@ -20,6 +20,7 @@ export const issues = {
     register(server) {
       server.route([
         { method: 'GET', path: '/issues', ...listController },
+        { method: 'GET', path: '/issues/grouped', ...groupedController },
         { method: 'GET', path: '/issues/{id}', ...detailController },
         {
           method: 'GET',

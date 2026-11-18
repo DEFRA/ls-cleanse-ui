@@ -127,6 +127,36 @@ describe('#createAnonymiser', () => {
     expect(() => createAnonymiser('')).toThrow(/DEMO_ANONYMISE_KEY/)
   })
 
+  test('Should anonymise a grouped search with the same fake CPH as its issues', async () => {
+    const searchIssuesByCph = vi.fn(async () => ({
+      items: [
+        {
+          cph: realIssue.context.cph,
+          issueCount: 1,
+          latestUpdatedAtUtc: realIssue.updatedAtUtc,
+          issues: [realIssue]
+        }
+      ],
+      totalCount: 1
+    }))
+    const wrapped = anonymiseClient(
+      { forRequest: () => ({ searchIssuesByCph }) },
+      createAnonymiser(key)
+    )
+
+    const page = await wrapped.searchIssuesByCph({})
+    const group = page.items[0]
+
+    expectNoRealValues(JSON.stringify(page))
+    expect(group.cph).toBe(group.issues[0].context.cph)
+
+    await wrapped.searchIssuesByCph({ searchTerm: group.cph })
+    expect(searchIssuesByCph).toHaveBeenLastCalledWith({
+      assignedUserId: undefined,
+      searchTerm: realIssue.context.cph
+    })
+  })
+
   test('Should give the same fakes for the same key, and different ones for another key', () => {
     const first = createAnonymiser(key).responses.getIssue(realIssue)
     const again = createAnonymiser(key).responses.getIssue(realIssue)

@@ -33,6 +33,19 @@ export function presentIssue(issue) {
   }
 }
 
+/** One CPH in the grouped list. The holding name is the first one any of its issues carries. */
+export function presentCphGroup(group) {
+  const issues = (group.issues ?? []).map(presentIssue)
+
+  return {
+    cph: group.cph,
+    issueCount: group.issueCount,
+    latestUpdatedAtUtc: group.latestUpdatedAtUtc,
+    holdingName: issues.find((issue) => issue.holdingName)?.holdingName,
+    issues
+  }
+}
+
 /** Keys the rules engine writes for its own bookkeeping; shown elsewhere, not in the evidence. */
 const identityKeys = new Set([
   'cph',

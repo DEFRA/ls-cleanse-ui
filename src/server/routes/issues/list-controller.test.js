@@ -4,7 +4,8 @@ import {
   buildPagination,
   rememberableQuery,
   maxRememberedQueryLength,
-  issuesBackLink
+  issuesBackLink,
+  buildSubNavigation
 } from './list-controller.js'
 
 describe('#readFilters', () => {
@@ -156,6 +157,9 @@ describe('#issuesBackLink', () => {
     expect(issuesBackLink('/issues?filtered=true&page=3')).toBe(
       '/issues?filtered=true&page=3'
     )
+    expect(issuesBackLink('/issues/grouped?filtered=true&page=2')).toBe(
+      '/issues/grouped?filtered=true&page=2'
+    )
   })
 
   /** The session is held by the browser, so a forged one must not be able to choose the link. */
@@ -169,8 +173,32 @@ describe('#issuesBackLink', () => {
     '//example.com/issues',
     '/issues/../admin',
     '/issuesx',
+    '/issues/groupedx',
+    '/issues/grouped/../../admin',
     '/admin/status'
   ])('Should link to the plain list instead of %j', (remembered) => {
     expect(issuesBackLink(remembered)).toBe('/issues')
+  })
+})
+
+describe('#buildSubNavigation', () => {
+  test('Should offer both views as plain paths for the default queue', () => {
+    expect(buildSubNavigation(readFilters({}), 'grouped')).toEqual([
+      { text: 'List', href: '/issues', current: false },
+      { text: 'Grouped', href: '/issues/grouped', current: true }
+    ])
+  })
+
+  test('Should carry chosen filters across views but start again at page one', () => {
+    const filters = readFilters({
+      filtered: 'true',
+      searchTerm: 'farm',
+      page: '4'
+    })
+    const [list, grouped] = buildSubNavigation(filters, 'list')
+
+    expect(list.current).toBe(true)
+    expect(grouped.href).toBe('/issues/grouped?filtered=true&searchTerm=farm')
+    expect(list.href).toBe('/issues?filtered=true&searchTerm=farm')
   })
 })

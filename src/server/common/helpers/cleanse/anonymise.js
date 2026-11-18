@@ -263,6 +263,12 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
       externalNotes: note
     })
 
+  const cphGroup = (value) =>
+    rewrite(value, {
+      cph: fakeCph,
+      issues: (list) => (Array.isArray(list) ? list.map(issue) : list)
+    })
+
   const historyEntry = (value) =>
     rewrite(value, {
       comments: note,
@@ -304,6 +310,7 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
     assignUser: issue,
     getGroupSummary: (value) => rewrite(value, { latestRun: run }),
     searchIssues: page(issue),
+    searchIssuesByCph: page(cphGroup),
     getIssue: issue,
     getIssueHistory: page(historyEntry),
     setWorkflowStatus: issue,
@@ -348,7 +355,7 @@ export function anonymiseClient(client, anonymiser) {
       )
     }
 
-    if (name === 'searchIssues') {
+    if (name === 'searchIssues' || name === 'searchIssuesByCph') {
       return async (query = {}) =>
         transform(
           await method({

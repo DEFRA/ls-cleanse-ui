@@ -1,4 +1,4 @@
-import { presentIssue, presentEvidence } from './presenter.js'
+import { presentIssue, presentEvidence, presentCphGroup } from './presenter.js'
 
 const issue = {
   id: '2-JBSWY3DPEHPK3PXP',
@@ -17,6 +17,22 @@ const issue = {
     samSpeciesCodes: 'HRS,SHP'
   }
 }
+
+describe('#presentCphGroup', () => {
+  test('Should present every issue and take the holding name from whichever has one', () => {
+    const bare = { ...issue, id: 'other', context: { cph: '01/036/8000' } }
+    const group = presentCphGroup({
+      cph: '01/036/8000',
+      issueCount: 2,
+      latestUpdatedAtUtc: '2026-01-02T00:00:00Z',
+      issues: [bare, issue]
+    })
+
+    expect(group.issueCount).toBe(2)
+    expect(group.holdingName).toBe('Mount Farm')
+    expect(group.issues.map((i) => i.workflowDetail.name)).toHaveLength(2)
+  })
+})
 
 describe('#presentIssue', () => {
   test('Should read everything on screen from the context, never the opaque id', () => {
