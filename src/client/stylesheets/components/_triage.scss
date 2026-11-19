@@ -82,6 +82,24 @@
   margin-bottom: 0;
 }
 
+// The arrow is drawn from aria-sort, so what is shown and what is announced cannot disagree.
+.app-sortable__link::after {
+  content: "\2195";
+  margin-left: govuk.govuk-spacing(1);
+  color: govuk.govuk-functional-colour(secondary-text);
+  text-decoration: none;
+}
+
+[aria-sort="ascending"] .app-sortable__link::after {
+  content: "\2191";
+  color: inherit;
+}
+
+[aria-sort="descending"] .app-sortable__link::after {
+  content: "\2193";
+  color: inherit;
+}
+
 .app-tag-row {
   display: flex;
   flex-wrap: wrap;

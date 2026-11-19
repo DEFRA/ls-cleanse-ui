@@ -122,4 +122,31 @@ describe('Issues grouped by CPH', () => {
         .attr('href')
     ).toBe('/issues?filtered=true&searchTerm=farm')
   })
+
+  test('sorts the groups on request and offers the reverse order in the header', async () => {
+    const response = await server.inject({
+      url: '/issues/grouped?filtered=true&sort=count&dir=asc&page=2',
+      auth: signedIn
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(backendQuery().get('groupSortBy')).toBe('IssueCount')
+    expect(backendQuery().get('groupSortDirection')).toBe('Ascending')
+
+    const $ = load(response.result)
+    const count = $('th[aria-sort="ascending"] a')
+    expect(count.text()).toBe('Issues')
+    expect(count.attr('href')).toContain('sort=count&dir=desc')
+    expect(count.attr('href')).not.toContain('page=')
+    expect($('th[aria-sort="none"] a').text()).toBe('Last updated')
+    expect($('input[name="sort"]').val()).toBe('count')
+    expect(response.result).toContain('page=2&amp;sort=count&amp;dir=asc')
+  })
+
+  test('sorts by latest update, newest first, unless told otherwise', async () => {
+    await server.inject({ url: '/issues/grouped', auth: signedIn })
+
+    expect(backendQuery().get('groupSortBy')).toBe('LatestUpdatedAtUtc')
+    expect(backendQuery().get('groupSortDirection')).toBe('Descending')
+  })
 })

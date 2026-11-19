@@ -38,6 +38,10 @@
     <div class="govuk-grid-column-one-quarter">
       <form method="get" action="{{ basePath }}" class="app-filters">
         <input type="hidden" name="filtered" value="true">
+        {% if view == "grouped" and (filters.groupSort != "updated" or filters.groupDirection != "desc") %}
+          <input type="hidden" name="sort" value="{{ filters.groupSort }}">
+          <input type="hidden" name="dir" value="{{ filters.groupDirection }}">
+        {% endif %}
 
         <h2 class="govuk-heading-m">Filter</h2>
 
@@ -146,8 +150,12 @@
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
               <th scope="col" class="govuk-table__header">CPH</th>
-              <th scope="col" class="govuk-table__header govuk-table__header--numeric">Issues</th>
-              <th scope="col" class="govuk-table__header">Last updated</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric app-sortable" aria-sort="{{ groupSortHeaders.count.ariaSort }}">
+                <a class="govuk-link govuk-link--no-visited-state app-sortable__link" href="{{ groupSortHeaders.count.href }}">{{ groupSortHeaders.count.text }}</a>
+              </th>
+              <th scope="col" class="govuk-table__header app-sortable" aria-sort="{{ groupSortHeaders.updated.ariaSort }}">
+                <a class="govuk-link govuk-link--no-visited-state app-sortable__link" href="{{ groupSortHeaders.updated.href }}">{{ groupSortHeaders.updated.text }}</a>
+              </th>
             </tr>
           </thead>
           {% for group in groups %}

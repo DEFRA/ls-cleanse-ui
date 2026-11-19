@@ -36,6 +36,8 @@ export function readFilters(query = {}) {
     assignee: query.assignee ?? 'all',
     searchTerm: (query.searchTerm ?? '').trim(),
     page: Math.max(1, Number.parseInt(query.page, 10) || 1),
+    groupSort: query.sort === 'count' ? 'count' : 'updated',
+    groupDirection: query.dir === 'asc' ? 'asc' : 'desc',
     isDefault: !chosen
   }
 }
@@ -64,7 +66,47 @@ export function buildQuery(filters, page) {
     params.append('page', String(page))
   }
 
+  if (filters.groupSort !== 'updated' || filters.groupDirection !== 'desc') {
+    params.append('sort', filters.groupSort)
+    params.append('dir', filters.groupDirection)
+  }
+
   return `?${params.toString()}`
+}
+
+const groupSortColumns = [
+  { name: 'count', text: 'Issues' },
+  { name: 'updated', text: 'Last updated' }
+]
+
+/**
+ * The sortable headers of the grouped table. A header sorts newest or largest first, and
+ * choosing the current one reverses it. Every change returns to page one.
+ */
+export function buildGroupSortHeaders(filters) {
+  return Object.fromEntries(
+    groupSortColumns.map(({ name, text }) => {
+      const current = filters.groupSort === name
+      const direction = current ? filters.groupDirection : undefined
+      const next = current && direction === 'desc' ? 'asc' : 'desc'
+
+      return [
+        name,
+        {
+          text,
+          href: buildQuery(
+            { ...filters, groupSort: name, groupDirection: next },
+            1
+          ),
+          ariaSort: direction
+            ? direction === 'asc'
+              ? 'ascending'
+              : 'descending'
+            : 'none'
+        }
+      ]
+    })
+  )
 }
 
 /**
@@ -148,21 +190,30 @@ const views = {
   },
   grouped: {
     path: '/issues/grouped',
-    search: (cleanse, query) => cleanse.searchIssuesByCph(query),
+    search: (cleanse, query, filters) =>
+      cleanse.searchIssuesByCph({
+        ...query,
+        groupSortBy:
+          filters.groupSort === 'count' ? 'IssueCount' : 'LatestUpdatedAtUtc',
+        groupSortDirection:
+          filters.groupDirection === 'asc' ? 'Ascending' : 'Descending'
+      }),
     present: (items) => ({ groups: items.map(presentCphGroup) })
   }
 }
 
 /** The List and Grouped tabs, each keeping the current filters but starting from page one. */
 export function buildSubNavigation(filters, current) {
-  const query = filters.isDefault ? '' : buildQuery(filters, 1)
+  const unsorted = { ...filters, groupSort: 'updated', groupDirection: 'desc' }
+  const queryFor = (name) =>
+    filters.isDefault ? '' : buildQuery(name === 'list' ? unsorted : filters, 1)
 
   return [
     { text: 'List', name: 'list' },
     { text: 'Grouped', name: 'grouped' }
   ].map(({ text, name }) => ({
     text,
-    href: views[name].path + query,
+    href: views[name].path + queryFor(name),
     current: name === current
   }))
 }
@@ -208,22 +259,26 @@ function issuesController(viewName) {
       }
 
       const [results, rules] = await Promise.all([
-        view.search(request.cleanse, {
-          groupId,
-          status: filters.status.length === 1 ? filters.status[0] : undefined,
-          workflowStatus: filters.workflowStatus,
-          ruleId: filters.ruleId === 'all' ? undefined : filters.ruleId,
-          searchTerm: filters.searchTerm || undefined,
-          assignedUserId:
-            filters.assignee !== 'all' && filters.assignee !== 'unassigned'
-              ? filters.assignee
-              : undefined,
-          unassigned: filters.assignee === 'unassigned' ? true : undefined,
-          sortBy: 'UpdatedAtUtc',
-          sortDirection: 'Descending',
-          pageNumber: filters.page,
-          pageSize
-        }),
+        view.search(
+          request.cleanse,
+          {
+            groupId,
+            status: filters.status.length === 1 ? filters.status[0] : undefined,
+            workflowStatus: filters.workflowStatus,
+            ruleId: filters.ruleId === 'all' ? undefined : filters.ruleId,
+            searchTerm: filters.searchTerm || undefined,
+            assignedUserId:
+              filters.assignee !== 'all' && filters.assignee !== 'unassigned'
+                ? filters.assignee
+                : undefined,
+            unassigned: filters.assignee === 'unassigned' ? true : undefined,
+            sortBy: 'UpdatedAtUtc',
+            sortDirection: 'Descending',
+            pageNumber: filters.page,
+            pageSize
+          },
+          filters
+        ),
         request.cleanse.getRules()
       ])
 
@@ -241,6 +296,7 @@ function issuesController(viewName) {
         view: viewName,
         basePath: view.path,
         subNavigation: buildSubNavigation(filters, viewName),
+        groupSortHeaders: buildGroupSortHeaders(filters),
         filters,
         ...view.present(results.items),
         totalCount: results.totalCount,
