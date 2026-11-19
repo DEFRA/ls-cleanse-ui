@@ -1,0 +1,10 @@
+<nav class="app-sub-navigation" aria-label="{{ params.label }}" data-testid="app-sub-navigation">
+  <ul class="app-sub-navigation__list">
+    {% for item in params.items %}
+      <li class="app-sub-navigation__item">
+        <a class="app-sub-navigation__link govuk-link govuk-link--no-visited-state" href="{{ item.href }}"
+          {%- if item.current %} aria-current="page"{% endif %}>{{ item.text }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+</nav>

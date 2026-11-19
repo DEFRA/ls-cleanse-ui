@@ -4,7 +4,9 @@ import {
   buildPagination,
   rememberableQuery,
   maxRememberedQueryLength,
-  issuesBackLink
+  issuesBackLink,
+  buildSubNavigation,
+  buildGroupSortHeaders
 } from './list-controller.js'
 
 describe('#readFilters', () => {
@@ -156,6 +158,9 @@ describe('#issuesBackLink', () => {
     expect(issuesBackLink('/issues?filtered=true&page=3')).toBe(
       '/issues?filtered=true&page=3'
     )
+    expect(issuesBackLink('/issues/grouped?filtered=true&page=2')).toBe(
+      '/issues/grouped?filtered=true&page=2'
+    )
   })
 
   /** The session is held by the browser, so a forged one must not be able to choose the link. */
@@ -169,8 +174,91 @@ describe('#issuesBackLink', () => {
     '//example.com/issues',
     '/issues/../admin',
     '/issuesx',
+    '/issues/groupedx',
+    '/issues/grouped/../../admin',
     '/admin/status'
   ])('Should link to the plain list instead of %j', (remembered) => {
     expect(issuesBackLink(remembered)).toBe('/issues')
+  })
+})
+
+describe('#buildSubNavigation', () => {
+  test('Should offer both views as plain paths for the default queue', () => {
+    expect(buildSubNavigation(readFilters({}), 'grouped')).toEqual([
+      { text: 'List', href: '/issues', current: false },
+      { text: 'Grouped', href: '/issues/grouped', current: true }
+    ])
+  })
+
+  test('Should carry chosen filters across views but start again at page one', () => {
+    const filters = readFilters({
+      filtered: 'true',
+      searchTerm: 'farm',
+      page: '4'
+    })
+    const [list, grouped] = buildSubNavigation(filters, 'list')
+
+    expect(list.current).toBe(true)
+    expect(grouped.href).toBe('/issues/grouped?filtered=true&searchTerm=farm')
+    expect(list.href).toBe('/issues?filtered=true&searchTerm=farm')
+  })
+})
+
+describe('#readFilters group sort', () => {
+  test('Should default to newest activity first', () => {
+    expect(readFilters({})).toMatchObject({
+      groupSort: 'updated',
+      groupDirection: 'desc'
+    })
+  })
+
+  test('Should accept the sortable columns and ignore anything else', () => {
+    expect(readFilters({ sort: 'count', dir: 'asc' })).toMatchObject({
+      groupSort: 'count',
+      groupDirection: 'asc'
+    })
+    expect(readFilters({ sort: 'cph', dir: 'sideways' })).toMatchObject({
+      groupSort: 'updated',
+      groupDirection: 'desc'
+    })
+  })
+
+  test('Should carry a chosen sort in the query but omit the default', () => {
+    const sorted = buildQuery(readFilters({ sort: 'count', dir: 'asc' }), 3)
+
+    expect(sorted).toContain('sort=count&dir=asc')
+    expect(sorted).toContain('page=3')
+    expect(buildQuery(readFilters({}), 1)).not.toContain('sort=')
+  })
+})
+
+describe('#buildGroupSortHeaders', () => {
+  test('Should offer each column largest or newest first, unsorted unless current', () => {
+    const headers = buildGroupSortHeaders(readFilters({}))
+
+    expect(headers.updated.ariaSort).toBe('descending')
+    expect(headers.count.ariaSort).toBe('none')
+    expect(headers.count.href).toContain('sort=count&dir=desc')
+  })
+
+  test('Should reverse the current column and return to page one', () => {
+    const filters = readFilters({ sort: 'count', dir: 'desc', page: '4' })
+    const headers = buildGroupSortHeaders(filters)
+
+    expect(headers.count.ariaSort).toBe('descending')
+    expect(headers.count.href).toContain('sort=count&dir=asc')
+    expect(headers.count.href).not.toContain('page=')
+    expect(
+      buildGroupSortHeaders(readFilters({ sort: 'count', dir: 'asc' })).count
+        .href
+    ).toContain('dir=desc')
+  })
+
+  test('Should keep the sort when switching to Grouped but drop it for List', () => {
+    const filters = readFilters({ filtered: 'true', sort: 'count', dir: 'asc' })
+    const [list, grouped] = buildSubNavigation(filters, 'grouped')
+
+    expect(grouped.href).toContain('sort=count&dir=asc')
+    expect(list.href).not.toContain('sort=')
   })
 })

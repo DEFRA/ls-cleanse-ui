@@ -20,6 +20,86 @@
   @include govuk.govuk-font-size($size: 16);
 }
 
+// Issues grouped by CPH. The script adds the toggles; without it every group is open.
+.app-grouped-table__parent:has(.app-grouped-table__toggle) {
+  cursor: pointer;
+
+  &:hover {
+    background-color: govuk.govuk-colour("black", $variant: "tint-95");
+  }
+}
+
+.app-grouped-table__parent--open {
+  background-color: govuk.govuk-colour("black", $variant: "tint-95");
+}
+
+.app-grouped-table__parent .app-secondary-text {
+  font-weight: govuk.$govuk-font-weight-regular;
+}
+
+.app-grouped-table__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: govuk.govuk-spacing(2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: govuk.govuk-functional-colour(link);
+  cursor: pointer;
+  @include govuk.govuk-font($size: 19, $weight: bold);
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus {
+    @include govuk.govuk-focused-text;
+  }
+}
+
+.app-grouped-table__glyph {
+  display: inline-block;
+  width: 1.2em;
+  border: 2px solid currentcolor;
+  line-height: 1.1;
+  text-align: center;
+
+  &::before {
+    content: "+";
+  }
+
+  [aria-expanded="true"] > &::before {
+    content: "\2212";
+  }
+}
+
+.app-grouped-table__child > .govuk-table__cell {
+  padding-left: govuk.govuk-spacing(6);
+}
+
+.app-grouped-table__issues {
+  margin-bottom: 0;
+}
+
+// The arrow is drawn from aria-sort, so what is shown and what is announced cannot disagree.
+.app-sortable__link::after {
+  content: "\2195";
+  margin-left: govuk.govuk-spacing(1);
+  color: govuk.govuk-functional-colour(secondary-text);
+  text-decoration: none;
+}
+
+[aria-sort="ascending"] .app-sortable__link::after {
+  content: "\2191";
+  color: inherit;
+}
+
+[aria-sort="descending"] .app-sortable__link::after {
+  content: "\2193";
+  color: inherit;
+}
+
 .app-tag-row {
   display: flex;
   flex-wrap: wrap;

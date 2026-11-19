@@ -195,6 +195,9 @@ export function createCleanseClient(options = {}) {
 
       searchIssues: (query) => request('GET', '/v1/issues', { query }),
 
+      searchIssuesByCph: (query) =>
+        request('GET', '/v1/issues/by-cph', { query }),
+
       getIssue: (id) => request('GET', `/v1/issues/${segment(id)}`),
 
       getIssueHistory: (id, query) =>

@@ -6,20 +6,42 @@
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
 {% from "govuk/components/select/macro.njk" import govukSelect %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "sub-navigation/macro.njk" import appSubNavigation %}
+
+{% macro workflowCell(issue) %}
+  {{ govukTag({
+    text: issue.workflowDetail.name,
+    classes: "govuk-tag--" + issue.workflowDetail.colour
+  }) }}
+  {% if issue.isInactive %}
+    <span class="app-secondary-text">Inactive</span>
+  {% elif issue.isSuppressed and issue.suppressionExpiresAtUtc %}
+    <span class="app-secondary-text">Until {{ issue.suppressionExpiresAtUtc | govukDate }}</span>
+  {% endif %}
+  <span class="app-secondary-text">Assigned to: {{ issue.assignedTo or "Unassigned" }}</span>
+{% endmacro %}
 
 {% block content %}
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
       <h1 class="govuk-heading-l">Issues</h1>
+      {{ appSubNavigation({
+        label: "Issue views",
+        items: subNavigation
+      }) }}
     </div>
   </div>
 
   <div class="govuk-grid-row">
 
     <div class="govuk-grid-column-one-quarter">
-      <form method="get" action="/issues" class="app-filters">
+      <form method="get" action="{{ basePath }}" class="app-filters">
         <input type="hidden" name="filtered" value="true">
+        {% if view == "grouped" and (filters.groupSort != "updated" or filters.groupDirection != "desc") %}
+          <input type="hidden" name="sort" value="{{ filters.groupSort }}">
+          <input type="hidden" name="dir" value="{{ filters.groupDirection }}">
+        {% endif %}
 
         <h2 class="govuk-heading-m">Filter</h2>
 
@@ -91,7 +113,7 @@
         }) }}
 
         <p class="govuk-body-s">
-          <a class="govuk-link govuk-link--no-visited-state" href="/issues">Reset filters</a>
+          <a class="govuk-link govuk-link--no-visited-state" href="{{ basePath }}">Reset filters</a>
         </p>
       </form>
     </div>
@@ -101,7 +123,7 @@
       {% if filters.isDefault %}
         <p class="govuk-body app-filter-summary">
           Showing active issues that still need work.
-          <a class="govuk-link govuk-link--no-visited-state" href="/issues?filtered=true">View all issues</a>
+          <a class="govuk-link govuk-link--no-visited-state" href="{{ basePath }}?filtered=true">View all issues</a>
         </p>
       {% endif %}
 
@@ -110,8 +132,79 @@
         <h2 class="govuk-heading-m">No issues match your filters</h2>
         <p class="govuk-body">
           Try removing a filter, or
-          <a class="govuk-link govuk-link--no-visited-state" href="/issues">reset the filters</a>.
+          <a class="govuk-link govuk-link--no-visited-state" href="{{ basePath }}">reset the filters</a>.
         </p>
+
+      {% elif view == "grouped" %}
+
+        <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
+          {{ totalCount }} {{ "CPH" if totalCount == 1 else "CPHs" }} with matching issues
+        </h2>
+        <p class="govuk-body-s govuk-!-margin-bottom-4">
+          Showing {{ from }} to {{ to }}
+        </p>
+
+        <div class="app-table-scroll" role="region" aria-label="Issues grouped by CPH" tabindex="0">
+        <table class="govuk-table app-table--compact app-grouped-table" data-module="app-grouped-table">
+          <caption class="govuk-visually-hidden">Issues matching your filters, grouped by CPH</caption>
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">CPH</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric app-sortable" aria-sort="{{ groupSortHeaders.count.ariaSort }}">
+                <a class="govuk-link govuk-link--no-visited-state app-sortable__link" href="{{ groupSortHeaders.count.href }}">{{ groupSortHeaders.count.text }}</a>
+              </th>
+              <th scope="col" class="govuk-table__header app-sortable" aria-sort="{{ groupSortHeaders.updated.ariaSort }}">
+                <a class="govuk-link govuk-link--no-visited-state app-sortable__link" href="{{ groupSortHeaders.updated.href }}">{{ groupSortHeaders.updated.text }}</a>
+              </th>
+            </tr>
+          </thead>
+          {% for group in groups %}
+            {% set cph = group.cph or "No CPH" %}
+            <tbody class="govuk-table__body app-grouped-table__group">
+              <tr class="govuk-table__row app-grouped-table__parent">
+                <th scope="row" class="govuk-table__header">
+                  <span class="app-grouped-table__cph" data-controls="cph-group-{{ loop.index }}">{{ cph }}</span>
+                  {% if group.holdingName %}
+                    <span class="app-secondary-text">{{ group.holdingName }}</span>
+                  {% endif %}
+                </th>
+                <td class="govuk-table__cell govuk-table__cell--numeric">{{ group.issueCount }}</td>
+                <td class="govuk-table__cell">{{ group.latestUpdatedAtUtc | govukDate }}</td>
+              </tr>
+              <tr class="govuk-table__row app-grouped-table__child" id="cph-group-{{ loop.index }}">
+                <td class="govuk-table__cell" colspan="3">
+                  <table class="govuk-table app-table--compact app-grouped-table__issues">
+                    <caption class="govuk-visually-hidden">Issues at {{ cph }}</caption>
+                    <thead class="govuk-table__head">
+                      <tr class="govuk-table__row">
+                        <th scope="col" class="govuk-table__header">What the rule found</th>
+                        <th scope="col" class="govuk-table__header">Workflow status</th>
+                        <th scope="col" class="govuk-table__header">Last updated</th>
+                      </tr>
+                    </thead>
+                    <tbody class="govuk-table__body">
+                      {% for issue in group.issues %}
+                        <tr class="govuk-table__row">
+                          <td class="govuk-table__cell">
+                            <a class="govuk-link govuk-link--no-visited-state" href="/issues/{{ issue.id }}">{{ issue.errorDescription }}</a>
+                            <span class="app-secondary-text">Rule {{ issue.ruleNumber }} &middot; {{ issue.errorCode }}</span>
+                          </td>
+                          <td class="govuk-table__cell">{{ workflowCell(issue) }}</td>
+                          <td class="govuk-table__cell">{{ issue.updatedAtUtc | govukDate }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </tbody>
+          {% endfor %}
+        </table>
+        </div>
+
+        {% if pagination %}
+          {{ govukPagination(pagination) }}
+        {% endif %}
 
       {% else %}
 
@@ -146,18 +239,7 @@
                   {{ issue.errorDescription }}
                   <span class="app-secondary-text">Rule {{ issue.ruleNumber }} &middot; {{ issue.errorCode }}</span>
                 </td>
-                <td class="govuk-table__cell">
-                  {{ govukTag({
-                    text: issue.workflowDetail.name,
-                    classes: "govuk-tag--" + issue.workflowDetail.colour
-                  }) }}
-                  {% if issue.isInactive %}
-                    <span class="app-secondary-text">Inactive</span>
-                  {% elif issue.isSuppressed and issue.suppressionExpiresAtUtc %}
-                    <span class="app-secondary-text">Until {{ issue.suppressionExpiresAtUtc | govukDate }}</span>
-                  {% endif %}
-                  <span class="app-secondary-text">Assigned to: {{ issue.assignedTo or "Unassigned" }}</span>
-                </td>
+                <td class="govuk-table__cell">{{ workflowCell(issue) }}</td>
                 <td class="govuk-table__cell">{{ issue.updatedAtUtc | govukDate }}</td>
               </tr>
             {% endfor %}
