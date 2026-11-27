@@ -1,0 +1,90 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to admin", href: "/admin" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if errors | length %}
+      {{ govukErrorSummary({ titleText: "There is a problem", errorList: errors }) }}
+    {% endif %}
+
+    {% if notification %}
+      {{ govukNotificationBanner({ type: "success", titleText: "Success", text: notification }) }}
+    {% endif %}
+
+    <h1 class="govuk-heading-l">{{ pageTitle }}</h1>
+    <p class="govuk-body">{{ intro }}</p>
+
+    {% for section in sections %}
+      <h2 class="govuk-heading-m" id="{{ section.list }}">{{ section.heading }}</h2>
+
+      {% if section.entries | length %}
+        <table class="govuk-table">
+          <caption class="govuk-visually-hidden">{{ section.heading }}, in alphabetical order</caption>
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Name</th>
+              <th scope="col" class="govuk-table__header">Status</th>
+              <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">Change</span></th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for entry in section.entries %}
+              <tr class="govuk-table__row">
+                <th scope="row" class="govuk-table__header">{{ entry.name }}</th>
+                <td class="govuk-table__cell">
+                  {{ govukTag({
+                    text: "Active" if entry.isActive else "Inactive",
+                    classes: "govuk-tag--green" if entry.isActive else "govuk-tag--grey"
+                  }) }}
+                </td>
+                <td class="govuk-table__cell govuk-table__cell--numeric">
+                  <form method="post" action="{{ path }}/{{ entry.id }}/active" novalidate>
+                    <input type="hidden" name="crumb" value="{{ crumb }}">
+                    <input type="hidden" name="list" value="{{ section.list }}">
+                    <input type="hidden" name="active" value="{{ "false" if entry.isActive else "true" }}">
+                    {{ govukButton({
+                      html: ("Switch off" if entry.isActive else "Switch on") + '<span class="govuk-visually-hidden"> ' + (entry.name | escape) + '</span>',
+                      classes: "govuk-button--secondary govuk-!-margin-bottom-0"
+                    }) }}
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="govuk-body">None yet.</p>
+      {% endif %}
+
+      <form method="post" action="{{ path }}" novalidate class="govuk-!-margin-bottom-9">
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <input type="hidden" name="list" value="{{ section.list }}">
+        {{ govukInput({
+          id: "name-" + section.list,
+          name: "name",
+          value: section.name,
+          label: { text: section.addLabel, classes: "govuk-label--s" },
+          hint: { text: "Up to 100 characters. Each name can only be in the list once." },
+          errorMessage: { text: section.error } if section.error
+        }) }}
+        {{ govukButton({ text: "Add", classes: "govuk-button--secondary" }) }}
+      </form>
+    {% endfor %}
+
+  </div>
+</div>
+
+{% endblock %}

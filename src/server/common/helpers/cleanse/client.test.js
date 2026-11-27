@@ -102,6 +102,100 @@ describe('#createCleanseClient query building', () => {
   })
 })
 
+describe('#createCleanseClient holdings and lists', () => {
+  const noAuth = { auth: { headers: async () => ({}) } }
+
+  test('Should ask for a holding by its CPH in the query string, never the path', async () => {
+    const fetchSpy = stubFetch(ok({}))
+
+    await createCleanseClient(noAuth).getHolding('cts-sam', '01/036/8000')
+
+    const url = urlOf(fetchSpy)
+    expect(url.pathname).toBe('/v1/holdings')
+    expect(url.searchParams.get('groupId')).toBe('cts-sam')
+    expect(url.searchParams.get('cph')).toBe('01/036/8000')
+  })
+
+  test.each([
+    ['assignHolding', 'PUT', '/v1/holdings/assignee'],
+    ['addHoldingNote', 'POST', '/v1/holdings/notes'],
+    ['recordHoldingActions', 'POST', '/v1/holdings/actions'],
+    ['updateHoldingIssues', 'POST', '/v1/holdings/workflow-status']
+  ])(
+    'Should send %s as %s %s, naming the person it is for',
+    async (method, verb, path) => {
+      const fetchSpy = stubFetch(ok({}))
+      const body = { groupId: 'cts-sam', cph: '01/036/8000' }
+      const client = createCleanseClient(noAuth).forRequest('trace', {
+        actingUserId: 'user-1'
+      })
+
+      await client[method](body)
+
+      const [url, options] = fetchSpy.mock.calls[0]
+      expect(new URL(url).pathname).toBe(path)
+      expect(options.method).toBe(verb)
+      expect(JSON.parse(options.body)).toEqual(body)
+      expect(options.headers['x-cleanse-user-id']).toBe('user-1')
+    }
+  )
+
+  test('Should read the person when the change is sent, as the session loads after the client is made', async () => {
+    const fetchSpy = stubFetch(ok({}))
+    let signedIn = null
+    const client = createCleanseClient(noAuth).forRequest('trace', {
+      actingUserId: () => signedIn
+    })
+
+    signedIn = 'user-2'
+    await client.addCodedValue('action-types', { name: 'Updated SAM' })
+
+    const [url, options] = fetchSpy.mock.calls[0]
+    expect(new URL(url).pathname).toBe('/v1/lists/action-types')
+    expect(options.headers['x-cleanse-user-id']).toBe('user-2')
+  })
+
+  test('Should name nobody on a read, or when nobody is signed in', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => ok([]))
+    const reader = createCleanseClient(noAuth).forRequest('trace', {
+      actingUserId: 'user-1'
+    })
+    const anonymous = createCleanseClient(noAuth).forRequest('trace', {
+      actingUserId: () => undefined
+    })
+
+    await reader.listCodedValues('resolved-reasons', { activeOnly: true })
+    await anonymous.setCodedValueActive('action-types', 'id 1', {
+      isActive: false
+    })
+
+    const [readUrl, read] = fetchSpy.mock.calls[0]
+    const [writeUrl, write] = fetchSpy.mock.calls[1]
+    expect(new URL(readUrl).searchParams.get('activeOnly')).toBe('true')
+    expect(read.headers).not.toHaveProperty('x-cleanse-user-id')
+    expect(new URL(writeUrl).pathname).toBe(
+      '/v1/lists/action-types/id%201/active'
+    )
+    expect(write.headers).not.toHaveProperty('x-cleanse-user-id')
+  })
+
+  test('Should say which issue the backend refused', async () => {
+    stubFetch(
+      problem(400, {
+        title: 'Bad request',
+        code: 'workflow.transition_not_allowed',
+        subject: '3-AAAA'
+      })
+    )
+
+    await expect(
+      createCleanseClient(noAuth).updateHoldingIssues({})
+    ).rejects.toMatchObject({ status: 400, subject: '3-AAAA' })
+  })
+})
+
 describe('#createCleanseClient through the CDP developer gateway', () => {
   // Generated, so no literal in the repository reads as a credential to secret scanning.
   const gatewayKey = crypto.randomUUID()

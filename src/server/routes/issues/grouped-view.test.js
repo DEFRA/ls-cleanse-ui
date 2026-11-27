@@ -38,6 +38,8 @@ describe('Issues grouped by CPH', () => {
               cph: '01/234/5678',
               issueCount: 2,
               latestUpdatedAtUtc: '2026-01-02T00:00:00Z',
+              holdingStatus: 'in-progress',
+              assignedTo: 'Alice Smith',
               issues: [
                 issue('issue-1', '2', 'todo'),
                 issue('issue-2', '5', 'in-progress', {
@@ -85,19 +87,26 @@ describe('Issues grouped by CPH', () => {
     const $ = load(response.result)
     const parent = $('.app-grouped-table__parent')
     expect(parent).toHaveLength(1)
-    expect(parent.find('.app-grouped-table__cph').text()).toBe('01/234/5678')
+    const cph = parent.find('.app-grouped-table__cph')
+    expect(cph.text().trim()).toBe('01/234/5678')
+    // The CPH opens the holding page.
+    expect(cph.find('a').attr('href')).toBe('/holdings/01/234/5678')
     expect(parent.text()).toContain('Hill Farm')
+    expect(parent.text()).toContain('In progress')
+    expect(parent.text()).toContain('Alice Smith')
     expect(parent.find('.govuk-table__cell--numeric').text()).toBe('2')
 
-    const child = $(
-      `#${parent.find('.app-grouped-table__cph').data('controls')}`
-    )
+    const child = $(`#${cph.data('controls')}`)
+    // Each issue opens the holding page at that issue.
     expect(
       child
         .find('a')
         .map((_, a) => $(a).attr('href'))
         .get()
-    ).toEqual(['/issues/issue-1', '/issues/issue-2'])
+    ).toEqual([
+      '/holdings/01/234/5678#issue-issue-1',
+      '/holdings/01/234/5678#issue-issue-2'
+    ])
     expect(child.text()).toContain('Finding 5')
     // Open on the server, so the issues are reachable without JavaScript.
     expect(child.attr('hidden')).toBeUndefined()

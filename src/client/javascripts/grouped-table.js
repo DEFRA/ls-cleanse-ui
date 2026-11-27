@@ -1,5 +1,6 @@
 /**
- * Turns each CPH in a grouped issues table into a toggle for its issues. Without JavaScript
+ * Gives each CPH in a grouped issues table a toggle for its issues. The CPH itself links to the
+ * holding, so the toggle sits beside it, and the rest of the row toggles too. Without JavaScript
  * every group stays open, so the table still works as a plain list.
  */
 export function initGroupedTables(root = document) {
@@ -19,8 +20,12 @@ export function initGroupedTables(root = document) {
         glyph.className = 'app-grouped-table__glyph'
         glyph.setAttribute('aria-hidden', 'true')
 
-        button.append(glyph, label.textContent)
-        label.replaceWith(button)
+        const text = document.createElement('span')
+        text.className = 'govuk-visually-hidden'
+        text.textContent = `Issues at ${label.textContent.trim()}`
+
+        button.append(glyph, text)
+        label.before(button)
 
         const setOpen = (open) => {
           button.setAttribute('aria-expanded', String(open))
@@ -29,9 +34,13 @@ export function initGroupedTables(root = document) {
         }
 
         setOpen(false)
-        parent.addEventListener('click', () =>
+        parent.addEventListener('click', (event) => {
+          // A link goes where it says rather than opening the group.
+          if (event.target.closest('a')) {
+            return
+          }
           setOpen(button.getAttribute('aria-expanded') !== 'true')
-        )
+        })
       })
     })
 }

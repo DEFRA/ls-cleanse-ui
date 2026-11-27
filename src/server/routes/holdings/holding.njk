@@ -1,0 +1,331 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/fieldset/macro.njk" import govukFieldset %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+
+{% macro tag(detail) %}
+  {{ govukTag({ text: detail.name, classes: "govuk-tag--" + detail.colour }) }}
+{% endmacro %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to issues", href: backLink }) }}
+{% endblock %}
+
+{% block content %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if errors | length %}
+        {{ govukErrorSummary({ titleText: "There is a problem", errorList: errors }) }}
+      {% endif %}
+
+      {% if notification %}
+        {{ govukNotificationBanner({ type: "success", titleText: "Success", text: notification }) }}
+      {% endif %}
+
+      <span class="govuk-caption-l">CPH {{ holding.cph }}</span>
+      <h1 class="govuk-heading-l">{{ holding.name or ("CPH " + holding.cph) }}</h1>
+
+      <p class="govuk-body app-tag-row">
+        {{ tag(holding.status) }}
+        <span>
+          {{ holding.openCount }} open {{ "issue" if holding.openCount == 1 else "issues" }},
+          {{ holding.closedCount }} closed
+        </span>
+      </p>
+
+      {% if holding.suppressedUntilUtc %}
+        {{ govukInsetText({
+          html: "The first suppression ends on <b>" + (holding.suppressedUntilUtc | govukDate) + "</b>. Each suppressed issue goes back to <b>To do</b> when its suppression ends."
+        }) }}
+      {% endif %}
+
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+
+    <div class="govuk-grid-column-two-thirds">
+      <form method="post" action="{{ holdingHref }}" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <input type="hidden" name="form" value="issues">
+
+        <h2 class="govuk-heading-m" id="issues">Issues</h2>
+        <p class="govuk-body">Select the issues to update. The open ones are selected to start with.</p>
+
+        {% for issue in issues %}
+          <div class="app-issue-card" id="issue-{{ issue.id }}">
+            <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="select-{{ issue.index }}" name="issues" type="checkbox" value="{{ issue.version }}:{{ issue.id }}"{{ " checked" if issue.checked }}>
+                <label class="govuk-label govuk-checkboxes__label app-issue-card__title" for="select-{{ issue.index }}">
+                  {{ issue.errorDescription }}
+                </label>
+              </div>
+            </div>
+
+            <p class="govuk-body-s app-secondary-text govuk-!-margin-bottom-2">
+              Rule {{ issue.ruleNumber or issue.ruleId }}{% if issue.errorCode %}, error code {{ issue.errorCode }}{% endif %}, first raised {{ issue.createdAtUtc | govukDate }}
+            </p>
+
+            <p class="govuk-body app-tag-row govuk-!-margin-bottom-2">
+              {{ tag(issue.statusDetail) }}
+              {{ tag(issue.workflowDetail) }}
+              {% if issue.isSuppressed and issue.suppressionExpiresAtUtc %}
+                <span class="app-secondary-text">Until {{ issue.suppressionExpiresAtUtc | govukDate }}</span>
+              {% endif %}
+            </p>
+
+            {% if issue.reason %}
+              <p class="govuk-body-s govuk-!-margin-bottom-2">Reason: {{ issue.reason }}</p>
+            {% endif %}
+
+            {% if issue.isInactive %}
+              <p class="govuk-body-s app-secondary-text">The overnight rules no longer find this problem.</p>
+            {% endif %}
+
+            <div class="govuk-grid-row">
+              <div class="govuk-grid-column-one-half">
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">CTS</h3>
+                {% if issue.evidence.cts | length %}
+                  {{ govukSummaryList({ rows: issue.evidence.cts, classes: "govuk-summary-list--no-border app-summary--compact" }) }}
+                {% else %}
+                  <p class="govuk-body-s app-secondary-text">Nothing held.</p>
+                {% endif %}
+              </div>
+              <div class="govuk-grid-column-one-half">
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">SAM</h3>
+                {% if issue.evidence.sam | length %}
+                  {{ govukSummaryList({ rows: issue.evidence.sam, classes: "govuk-summary-list--no-border app-summary--compact" }) }}
+                {% else %}
+                  <p class="govuk-body-s app-secondary-text">SAM holds no holding for this CPH.</p>
+                {% endif %}
+              </div>
+            </div>
+
+            {% if issue.evidence.other | length %}
+              {{ govukSummaryList({ rows: issue.evidence.other, classes: "app-summary--compact" }) }}
+            {% endif %}
+
+            {% if issue.externalNotes %}
+              <p class="govuk-body-s"><b>Notes from SPOL:</b> {{ issue.externalNotes }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        {% set resolvedHtml %}
+          {% if resolvedReasonItems %}
+            {{ govukSelect({
+              id: "resolvedReason",
+              name: "resolvedReason",
+              label: { text: "Reason (optional)" },
+              items: resolvedReasonItems
+            }) }}
+          {% endif %}
+        {% endset %}
+
+        {% set cantResolveHtml %}
+          {{ govukSelect({
+            id: "cantResolveReason",
+            name: "cantResolveReason",
+            label: { text: "Reason" },
+            items: cantResolveReasonItems,
+            errorMessage: { text: fieldError.cantResolveReason } if fieldError.cantResolveReason
+          }) }}
+        {% endset %}
+
+        {% set suppressHtml %}
+          {{ govukSelect({
+            id: "period",
+            name: "period",
+            label: { text: "Suppress for" },
+            hint: { text: "Every selected issue is suppressed until the same date." },
+            items: periodItems,
+            errorMessage: { text: fieldError.period } if fieldError.period
+          }) }}
+        {% endset %}
+
+        {# Each choice that needs more reveals it: a reason for an outcome, a period for suppression. #}
+        {% set radioItems = [] %}
+        {% for item in updateItems %}
+          {% if item.value == "resolved" and resolvedReasonItems %}
+            {% set conditional = { html: resolvedHtml } %}
+          {% elif item.value == "nonactionable" %}
+            {% set conditional = { html: cantResolveHtml } %}
+          {% elif item.value == "suppressed" %}
+            {% set conditional = { html: suppressHtml } %}
+          {% else %}
+            {% set conditional = none %}
+          {% endif %}
+          {% set added = radioItems.push({
+            value: item.value,
+            text: item.text,
+            checked: item.checked,
+            conditional: conditional
+          }) %}
+        {% endfor %}
+
+        <div class="app-panel">
+          {{ govukRadios({
+            idPrefix: "workflowStatus",
+            name: "workflowStatus",
+            fieldset: {
+              legend: { text: "Update the selected issues", classes: "govuk-fieldset__legend--m" }
+            },
+            items: radioItems,
+            errorMessage: { text: fieldError.workflowStatus } if fieldError.workflowStatus
+          }) }}
+
+          {{ govukTextarea({
+            id: "issuesNote",
+            name: "note",
+            rows: 3,
+            value: values.note if values.form == "issues",
+            label: { text: "Note (optional)" },
+            hint: { text: "Kept with the holding's notes, saying what it was written with." },
+            errorMessage: { text: fieldError.issuesNote } if fieldError.issuesNote
+          }) }}
+
+          {{ govukButton({ text: "Update issues" }) }}
+        </div>
+      </form>
+    </div>
+
+    <div class="govuk-grid-column-one-third">
+
+      <div class="app-panel">
+        <form method="post" action="{{ holdingHref }}" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          <input type="hidden" name="form" value="assignee">
+          <input type="hidden" name="expectedVersion" value="{{ holding.version }}">
+          {{ govukSelect({
+            id: "userId",
+            name: "userId",
+            label: { text: "Assigned to", classes: "govuk-label--m" },
+            hint: { text: "Covers every issue at this holding, including any raised later." },
+            classes: "govuk-!-width-full",
+            items: assigneeItems
+          }) }}
+          {{ govukButton({ text: "Save", classes: "govuk-button--secondary" }) }}
+        </form>
+      </div>
+
+      <div class="app-panel">
+        <form method="post" action="{{ holdingHref }}" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          <input type="hidden" name="form" value="actions">
+          {% if actionTypeItems | length %}
+            {{ govukCheckboxes({
+              idPrefix: "actionTypes",
+              name: "actionTypes",
+              classes: "govuk-checkboxes--small",
+              fieldset: {
+                legend: { text: "Record what you did", classes: "govuk-fieldset__legend--m" }
+              },
+              items: actionTypeItems
+            }) }}
+            {{ govukTextarea({
+              id: "actionsNote",
+              name: "note",
+              rows: 2,
+              value: values.note if values.form == "actions",
+              label: { text: "Note (optional)" },
+              errorMessage: { text: fieldError.actionsNote } if fieldError.actionsNote
+            }) }}
+            {{ govukButton({ text: "Record actions" }) }}
+          {% else %}
+            <h2 class="govuk-heading-m" id="actionTypes">Record what you did</h2>
+            <p class="govuk-body">No action types have been set up yet. An admin can add them.</p>
+          {% endif %}
+        </form>
+      </div>
+
+      <div class="app-panel">
+        <h2 class="govuk-heading-m">Notes</h2>
+        <form method="post" action="{{ holdingHref }}" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          <input type="hidden" name="form" value="note">
+          {{ govukTextarea({
+            id: "noteText",
+            name: "text",
+            rows: 3,
+            value: values.text if values.form == "note",
+            label: { text: "Add a note" },
+            hint: { text: "Up to 2,000 characters. Notes cannot be changed once added." },
+            errorMessage: { text: fieldError.noteText } if fieldError.noteText
+          }) }}
+          {{ govukButton({ text: "Add note", classes: "govuk-button--secondary" }) }}
+        </form>
+
+        {% if notes | length %}
+          <ul class="govuk-list app-notes">
+            {% for note in notes %}
+              <li class="app-notes__item">
+                <p class="govuk-body govuk-!-margin-bottom-1 app-notes__text">{{ note.text }}</p>
+                <p class="govuk-body-s app-secondary-text govuk-!-margin-bottom-0">
+                  {{ note.createdByDisplayName }}, {{ note.createdAtUtc | govukDateTime }}{% if note.about %}. {{ note.about }}{% endif %}
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="govuk-body app-secondary-text">No notes yet.</p>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      <h2 class="govuk-heading-m">History</h2>
+      {% if history | length %}
+        <table class="govuk-table app-table--compact">
+          <caption class="govuk-visually-hidden">What has happened at this holding, newest first</caption>
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">When</th>
+              <th scope="col" class="govuk-table__header">Who</th>
+              <th scope="col" class="govuk-table__header">What happened</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for event in history %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">{{ event.atUtc | govukDateTime }}</td>
+                <td class="govuk-table__cell">{{ event.actorDisplayName }}</td>
+                <td class="govuk-table__cell">
+                  {% if event.kind == "actions-recorded" %}
+                    Actions: {{ event.actions | join(", ") }}
+                  {% elif event.kind == "assignment-changed" %}
+                    {{ ("Assigned to " + event.assignedTo) if event.assignedTo else "Unassigned" }}
+                  {% elif event.kind == "status-changed" and event.workflowStatus == "suppressed" and event.suppressedUntilUtc %}
+                    {{ event.rule }} suppressed until {{ event.suppressedUntilUtc | govukDate }}
+                  {% elif event.kind == "status-changed" %}
+                    {{ event.rule }} moved to {{ event.status }}{% if event.outcomeReason %}. Reason: {{ event.outcomeReason }}{% endif %}
+                  {% elif event.kind == "contact" %}
+                    {{ event.rule }}: {{ event.contact }}{% if event.detail %} ({{ event.detail }}){% endif %}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="govuk-body app-secondary-text">Nothing has been recorded against this holding yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+{% endblock %}

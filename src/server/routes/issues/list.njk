@@ -18,6 +18,9 @@
   {% elif issue.isSuppressed and issue.suppressionExpiresAtUtc %}
     <span class="app-secondary-text">Until {{ issue.suppressionExpiresAtUtc | govukDate }}</span>
   {% endif %}
+  {% if issue.reason %}
+    <span class="app-secondary-text">{{ issue.reason }}</span>
+  {% endif %}
   <span class="app-secondary-text">Assigned to: {{ issue.assignedTo or "Unassigned" }}</span>
 {% endmacro %}
 
@@ -150,6 +153,8 @@
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
               <th scope="col" class="govuk-table__header">CPH</th>
+              <th scope="col" class="govuk-table__header">Holding status</th>
+              <th scope="col" class="govuk-table__header">Assigned to</th>
               <th scope="col" class="govuk-table__header govuk-table__header--numeric app-sortable" aria-sort="{{ groupSortHeaders.count.ariaSort }}">
                 <a class="govuk-link govuk-link--no-visited-state app-sortable__link" href="{{ groupSortHeaders.count.href }}">{{ groupSortHeaders.count.text }}</a>
               </th>
@@ -163,16 +168,34 @@
             <tbody class="govuk-table__body app-grouped-table__group">
               <tr class="govuk-table__row app-grouped-table__parent">
                 <th scope="row" class="govuk-table__header">
-                  <span class="app-grouped-table__cph" data-controls="cph-group-{{ loop.index }}">{{ cph }}</span>
+                  <span class="app-grouped-table__cph" data-controls="cph-group-{{ loop.index }}">
+                    {% if group.holdingHref %}
+                      <a class="govuk-link govuk-link--no-visited-state" href="{{ group.holdingHref }}">{{ cph }}</a>
+                    {% else %}
+                      {{ cph }}
+                    {% endif %}
+                  </span>
                   {% if group.holdingName %}
                     <span class="app-secondary-text">{{ group.holdingName }}</span>
                   {% endif %}
                 </th>
+                <td class="govuk-table__cell">
+                  {% if group.holdingStatus %}
+                    {{ govukTag({
+                      text: group.holdingStatus.name,
+                      classes: "govuk-tag--" + group.holdingStatus.colour
+                    }) }}
+                    {% if group.suppressedUntilUtc %}
+                      <span class="app-secondary-text">Until {{ group.suppressedUntilUtc | govukDate }}</span>
+                    {% endif %}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">{{ group.assignedTo or "Unassigned" }}</td>
                 <td class="govuk-table__cell govuk-table__cell--numeric">{{ group.issueCount }}</td>
                 <td class="govuk-table__cell">{{ group.latestUpdatedAtUtc | govukDate }}</td>
               </tr>
               <tr class="govuk-table__row app-grouped-table__child" id="cph-group-{{ loop.index }}">
-                <td class="govuk-table__cell" colspan="3">
+                <td class="govuk-table__cell" colspan="5">
                   <table class="govuk-table app-table--compact app-grouped-table__issues">
                     <caption class="govuk-visually-hidden">Issues at {{ cph }}</caption>
                     <thead class="govuk-table__head">
@@ -186,7 +209,11 @@
                       {% for issue in group.issues %}
                         <tr class="govuk-table__row">
                           <td class="govuk-table__cell">
-                            <a class="govuk-link govuk-link--no-visited-state" href="/issues/{{ issue.id }}">{{ issue.errorDescription }}</a>
+                            {% if issue.href %}
+                              <a class="govuk-link govuk-link--no-visited-state" href="{{ issue.href }}">{{ issue.errorDescription }}</a>
+                            {% else %}
+                              {{ issue.errorDescription }}
+                            {% endif %}
                             <span class="app-secondary-text">Rule {{ issue.ruleNumber }} &middot; {{ issue.errorCode }}</span>
                           </td>
                           <td class="govuk-table__cell">{{ workflowCell(issue) }}</td>
@@ -230,7 +257,11 @@
             {% for issue in issues %}
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">
-                  <a class="govuk-link govuk-link--no-visited-state" href="/issues/{{ issue.id }}">{{ issue.cph }}</a>
+                  {% if issue.href %}
+                    <a class="govuk-link govuk-link--no-visited-state" href="{{ issue.href }}">{{ issue.cph }}</a>
+                  {% else %}
+                    No CPH
+                  {% endif %}
                   {% if issue.holdingName %}
                     <span class="app-secondary-text">{{ issue.holdingName }}</span>
                   {% endif %}

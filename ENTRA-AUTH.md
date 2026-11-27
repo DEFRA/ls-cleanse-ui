@@ -77,7 +77,7 @@ Entra, and only a member of `Cleanse-Test-Admins` can open `/admin`.
    After their first successful sign-in, the user directory records
    their identity, full name and last-logon time for use in assignment.
 
-To assign issues to someone before they first sign in, an admin can add their
+To assign holdings to someone before they first sign in, an admin can add their
 email address in **Admin > Users > Add users**. When they first sign in, Cleanse
 links them to that record by email address and replaces the name derived from
 the email address with their Entra name. Adding someone there does not let them
@@ -93,5 +93,5 @@ Roles are read at sign-in, so a change applies from the user's next sign-in.
 2. Select the user and choose **Remove**.
 3. Once Entra has applied the change, new sign-ins will be refused. An existing
    Cleanse session may remain valid until its four-hour expiry.
-4. Reassign any outstanding issues. Previously recorded user information and
+4. Reassign any holdings assigned to them. Previously recorded user information and
    assignments are retained; removing membership does not delete them.

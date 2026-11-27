@@ -15,13 +15,15 @@ const credentialNames = {
  * from the problem document so a caller can branch on it without matching on prose.
  */
 export class CleanseApiError extends Error {
-  constructor({ status, code, title, detail }) {
+  constructor({ status, code, title, detail, subject }) {
     super(detail ?? title ?? `Cleanse API returned ${status}`)
     this.name = 'CleanseApiError'
     this.status = status
     this.code = code
     this.title = title
     this.detail = detail
+    /** Which item failed, where a request names several, such as the issue that could not move. */
+    this.subject = subject
   }
 
   /** The stored version did not match the one the form carried. */
@@ -45,7 +47,8 @@ async function readProblem(response) {
       status: response.status,
       code: body.code,
       title: body.title,
-      detail: body.detail
+      detail: body.detail,
+      subject: body.subject
     })
   } catch {
     return new CleanseApiError({ status: response.status })
@@ -171,10 +174,24 @@ export function createCleanseClient(options = {}) {
   /**
    * The call surface, bound to one trace id. `forRequest` exists so the auth strategy — and
    * therefore its token cache — is shared across every request rather than rebuilt per call.
+   *
+   * `actingUserId` names the signed-in person, so the backend records a holding or list change
+   * against them rather than against this service. It may be a function, read when a change is
+   * sent, because the session that holds it is not loaded when a request starts.
    */
-  function forRequest(traceId) {
+  function forRequest(traceId, { actingUserId } = {}) {
     const request = (method, path, options = {}) =>
       send(method, path, { ...options, traceId })
+
+    const actingFor = () => {
+      const id =
+        typeof actingUserId === 'function' ? actingUserId() : actingUserId
+      return id ? { 'x-cleanse-user-id': id } : {}
+    }
+
+    /** A change made for a person: a holding's or a list's. */
+    const change = (method, path, body) =>
+      request(method, path, { body, headers: actingFor() })
 
     return {
       recordLogin: (body) => request('POST', '/v1/users/logins', { body }),
@@ -182,9 +199,6 @@ export function createCleanseClient(options = {}) {
       registerUsers: (body) => request('POST', '/v1/users', { body }),
 
       searchUsers: (query) => request('GET', '/v1/users', { query }),
-
-      assignUser: (id, body) =>
-        request('PUT', `/v1/issues/${segment(id)}/assignee`, { body }),
 
       getGroups: () => request('GET', '/v1/groups'),
 
@@ -200,25 +214,30 @@ export function createCleanseClient(options = {}) {
 
       getIssue: (id) => request('GET', `/v1/issues/${segment(id)}`),
 
-      getIssueHistory: (id, query) =>
-        request('GET', `/v1/issues/${segment(id)}/history`, { query }),
+      // A CPH has slashes in it, so it travels in the query string or the body, never the path.
+      getHolding: (groupId, cph) =>
+        request('GET', '/v1/holdings', { query: { groupId, cph } }),
 
-      setWorkflowStatus: (id, body) =>
-        request('PUT', `/v1/issues/${segment(id)}/workflow-status`, { body }),
+      assignHolding: (body) => change('PUT', '/v1/holdings/assignee', body),
 
-      setNotes: (id, body) =>
-        request('PUT', `/v1/issues/${segment(id)}/notes`, { body }),
+      addHoldingNote: (body) => change('POST', '/v1/holdings/notes', body),
 
-      suppress: (id, body) =>
-        request('PUT', `/v1/issues/${segment(id)}/suppression`, { body }),
+      recordHoldingActions: (body) =>
+        change('POST', '/v1/holdings/actions', body),
 
-      unsuppress: (id, expectedVersion) =>
-        request('DELETE', `/v1/issues/${segment(id)}/suppression`, {
-          query: { expectedVersion }
+      updateHoldingIssues: (body) =>
+        change('POST', '/v1/holdings/workflow-status', body),
+
+      listCodedValues: (list, { activeOnly } = {}) =>
+        request('GET', `/v1/lists/${segment(list)}`, {
+          query: { activeOnly: activeOnly ? true : undefined }
         }),
 
-      addHistory: (id, body) =>
-        request('POST', `/v1/issues/${segment(id)}/history`, { body }),
+      addCodedValue: (list, body) =>
+        change('POST', `/v1/lists/${segment(list)}`, body),
+
+      setCodedValueActive: (list, id, body) =>
+        change('PUT', `/v1/lists/${segment(list)}/${segment(id)}/active`, body),
 
       searchRuns: (query) => request('GET', '/v1/runs', { query }),
 

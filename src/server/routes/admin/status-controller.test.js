@@ -239,7 +239,8 @@ describe('#admin status', () => {
 
     // Workflow statuses with no issues still get a row, so "none suppressed" is readable.
     expect(result).toContain('Suppressed')
-    expect(result).toContain('Not actionable')
+    expect(result).toContain('Can&#39;t resolve')
+    expect(result).not.toContain('Ignored')
     expect(result).toContain('12 issues in')
   })
 

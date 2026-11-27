@@ -1,18 +1,9 @@
 import { listController, groupedController } from './list-controller.js'
 import { detailController } from './detail-controller.js'
-import { assignmentController } from './assignment-controller.js'
-import {
-  startController,
-  reopenController,
-  resolveController,
-  ignoreController,
-  suppressController,
-  noteController
-} from './action-controllers.js'
 
 /**
- * Every mutation is a POST that redirects, so a refresh never repeats an action and the whole
- * service works with JavaScript switched off.
+ * The issue lists. Work on an issue happens on its holding's page, so an issue's own address
+ * just leads there.
  */
 export const issues = {
   plugin: {
@@ -21,64 +12,7 @@ export const issues = {
       server.route([
         { method: 'GET', path: '/issues', ...listController },
         { method: 'GET', path: '/issues/grouped', ...groupedController },
-        { method: 'GET', path: '/issues/{id}', ...detailController },
-        {
-          method: 'GET',
-          path: '/issues/{id}/assign',
-          handler: assignmentController.get
-        },
-        {
-          method: 'POST',
-          path: '/issues/{id}/assign',
-          handler: assignmentController.post
-        },
-
-        { method: 'POST', path: '/issues/{id}/start', ...startController },
-        { method: 'POST', path: '/issues/{id}/reopen', ...reopenController },
-
-        {
-          method: 'GET',
-          path: '/issues/{id}/resolve',
-          handler: resolveController.get
-        },
-        {
-          method: 'POST',
-          path: '/issues/{id}/resolve',
-          handler: resolveController.post
-        },
-
-        {
-          method: 'GET',
-          path: '/issues/{id}/ignore',
-          handler: ignoreController.get
-        },
-        {
-          method: 'POST',
-          path: '/issues/{id}/ignore',
-          handler: ignoreController.post
-        },
-
-        {
-          method: 'GET',
-          path: '/issues/{id}/suppress',
-          handler: suppressController.get
-        },
-        {
-          method: 'POST',
-          path: '/issues/{id}/suppress',
-          handler: suppressController.post
-        },
-
-        {
-          method: 'GET',
-          path: '/issues/{id}/note',
-          handler: noteController.get
-        },
-        {
-          method: 'POST',
-          path: '/issues/{id}/note',
-          handler: noteController.post
-        }
+        { method: 'GET', path: '/issues/{id}', ...detailController }
       ])
     }
   }
