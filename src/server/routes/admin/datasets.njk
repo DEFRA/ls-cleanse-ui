@@ -1,0 +1,119 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to admin", href: "/admin" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#name" }]
+      }) }}
+    {% endif %}
+
+    {% if notification %}
+      {{ govukNotificationBanner({ type: "success", titleText: "Success", text: notification }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">{{ groupId }}</span>
+    <h1 class="govuk-heading-l">SPOL datasets</h1>
+
+    <p class="govuk-body">
+      A dataset holds one export of the SPOL list. The SPOL connector loads it from your desktop,
+      using the dataset's key. Once it is Ready, process it to bring the list's triage state and
+      assignees onto the matching issues and holdings.
+    </p>
+
+    <p class="govuk-body">
+      Cleanse never shows a dataset's rows. They include keepers' contact details, so delete a
+      dataset once it has been processed.
+    </p>
+
+    <p class="govuk-body">
+      <a class="govuk-link govuk-link--no-visited-state" href="/admin/imports">See every processing run, and earlier file uploads</a>
+    </p>
+
+    <form method="post" action="/admin/datasets" novalidate>
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+
+      {{ govukInput({
+        id: "name",
+        name: "name",
+        value: name,
+        spellcheck: false,
+        classes: "govuk-!-width-two-thirds",
+        label: { text: "Create a dataset", classes: "govuk-label--m" },
+        hint: { text: "Give it a name, of up to 100 characters, or leave this blank to name it after when it is created." },
+        errorMessage: { text: error } if error
+      }) }}
+
+      {{ govukButton({ text: "Create dataset" }) }}
+    </form>
+
+  </div>
+</div>
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-full">
+
+    <h2 class="govuk-heading-m">Datasets</h2>
+
+    {% if datasets | length %}
+      <table class="govuk-table app-table--compact">
+        <caption class="govuk-visually-hidden">SPOL datasets, newest first</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Name</th>
+            <th scope="col" class="govuk-table__header">Status</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rows</th>
+            <th scope="col" class="govuk-table__header">Created</th>
+            <th scope="col" class="govuk-table__header">Last updated</th>
+            <th scope="col" class="govuk-table__header">Last loaded</th>
+            <th scope="col" class="govuk-table__header">Last processed</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for dataset in datasets %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">
+                <a class="govuk-link govuk-link--no-visited-state" href="/admin/datasets/{{ dataset.id }}">{{ dataset.name }}</a>
+              </td>
+              <td class="govuk-table__cell">
+                {{ govukTag({ text: dataset.statusDetail.name, classes: "govuk-tag--" + dataset.statusDetail.colour }) }}
+              </td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ dataset.rows }}</td>
+              <td class="govuk-table__cell">{{ dataset.createdAtUtc | govukDateTime }}</td>
+              <td class="govuk-table__cell">{{ dataset.updatedAtUtc | govukDateTime }}</td>
+              <td class="govuk-table__cell">{{ (dataset.lastLoadedAtUtc | govukDateTime) or "Not yet" }}</td>
+              <td class="govuk-table__cell">
+                {% if dataset.lastProcessing %}
+                  <a class="govuk-link govuk-link--no-visited-state" href="/admin/imports/{{ dataset.lastProcessing.importJobId }}">{{ dataset.lastProcessing.createdAtUtc | govukDateTime }}</a>
+                  <span class="app-secondary-text">{{ dataset.lastProcessing.statusDetail.name }}</span>
+                {% else %}
+                  Not yet
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">There are no datasets.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

@@ -26,6 +26,8 @@ export const loggerOptions = {
         ...logConfig.redact,
         'req.headers.authorization',
         'req.headers.cookie',
+        // The SPOL connector's credential for one dataset.
+        'req.headers["x-dataset-key"]',
         // The issues search carries whatever a caseworker typed, and the referer carries the
         // previous page's query string, so neither may reach the logs.
         'req.headers.referer',

@@ -102,6 +102,12 @@ export const importStatuses = [
   { id: 'abandoned', name: 'Abandoned', colour: 'grey' }
 ]
 
+export const datasetStatuses = [
+  { id: 'empty', name: 'Empty', colour: 'grey' },
+  { id: 'loading', name: 'Loading', colour: 'yellow' },
+  { id: 'ready', name: 'Ready', colour: 'green' }
+]
+
 const byId = (list) => new Map(list.map((item) => [item.id, item]))
 
 const issueStatusesById = byId(issueStatuses)
@@ -109,6 +115,7 @@ const workflowStatusesById = byId(workflowStatuses)
 const holdingStatusesById = byId(holdingStatuses)
 const runStatesById = byId(runStates)
 const importStatusesById = byId(importStatuses)
+const datasetStatusesById = byId(datasetStatuses)
 
 // The audit log still says "ignored" for changes made before it merged into Can't resolve.
 workflowStatusesById.set('ignored', workflowStatusesById.get('nonactionable'))
@@ -124,3 +131,5 @@ export const describeHoldingStatus = (id) =>
 export const describeRunState = (id) => runStatesById.get(id) ?? unknown(id)
 export const describeImportStatus = (id) =>
   importStatusesById.get(id) ?? unknown(id)
+export const describeDatasetStatus = (id) =>
+  datasetStatusesById.get(id) ?? unknown(id)

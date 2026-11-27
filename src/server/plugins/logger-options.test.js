@@ -26,6 +26,7 @@ describe('#loggerOptions redaction', () => {
             referer: 'https://cleanse/issues?searchTerm=Keeper-Surname',
             authorization: 'Bearer secret-token',
             cookie: 'session=secret',
+            'x-dataset-key': 'cleanse_ds_secret',
             'user-agent': 'browser'
           }
         }
@@ -52,6 +53,13 @@ describe('#loggerOptions redaction', () => {
     expect(line.req.headers).not.toHaveProperty('authorization')
     expect(line.req.headers).not.toHaveProperty('cookie')
     expect(line.res).not.toHaveProperty('headers')
+  })
+
+  test("Should drop the SPOL connector's dataset key", () => {
+    const line = logRequest()
+
+    expect(line.req.headers).not.toHaveProperty('x-dataset-key')
+    expect(JSON.stringify(line)).not.toContain('cleanse_ds_secret')
   })
 
   test('Should keep what operations need', () => {

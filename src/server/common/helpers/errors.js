@@ -50,6 +50,21 @@ export function catchAll(request, h) {
     request.logger.error(response?.stack)
   }
 
+  // The connector reads these, not a person, so they stay JSON.
+  if (request.path?.startsWith('/api/')) {
+    return h
+      .response({
+        status: statusCode,
+        title: response.output.payload.error,
+        detail:
+          statusCode >= statusCodes.internalServerError
+            ? errorMessage
+            : response.output.payload.message
+      })
+      .code(statusCode)
+      .type('application/problem+json')
+  }
+
   return h
     .view('error/index', {
       pageTitle: errorMessage,

@@ -297,6 +297,40 @@ describe('#createAnonymiser', () => {
     })
   })
 
+  test('Should anonymise the person who created a dataset, keeping its key and counts', () => {
+    const { responses } = createAnonymiser(key)
+    const dataset = {
+      id: 'd1',
+      name: 'November export',
+      status: 'ready',
+      rowCount: 31887,
+      createdBy: 'Real Person',
+      lastProcessing: { importJobId: 'j1', status: 'completed' }
+    }
+
+    const created = responses.createSpolDataset({
+      dataset,
+      key: 'cleanse_ds_abc'
+    })
+    const listed = responses.searchSpolDatasets({ items: [dataset] })
+
+    expectNoRealValues(
+      JSON.stringify([created, listed, responses.getSpolDataset(dataset)])
+    )
+    expect(created.key).toBe('cleanse_ds_abc')
+    expect(created.dataset).toMatchObject({
+      id: 'd1',
+      name: 'November export',
+      rowCount: 31887
+    })
+    expect(listed.items[0].lastProcessing).toEqual(dataset.lastProcessing)
+    expectNoRealValues(
+      JSON.stringify(
+        responses.processSpolDataset({ requestedBy: 'Real Person' })
+      )
+    )
+  })
+
   test('Should leave nulls and missing fields alone', () => {
     const { responses } = createAnonymiser(key)
 

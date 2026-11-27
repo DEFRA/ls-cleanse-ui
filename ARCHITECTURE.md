@@ -11,7 +11,9 @@ their triage state preserved across re-detections and a full audit trail.
 ```mermaid
 flowchart LR
     staff(["Internal staff<br/>caseworkers"])
+    admin(["Admin's laptop<br/>SPOL connector"])
     entra["Microsoft Entra ID<br/>staff sign-in"]
+    spol["SharePoint<br/>SPOL list"]
 
     subgraph cdp["DEFRA Core Delivery Platform"]
         ui["Cleanse UI<br/>ls-cleanse-ui<br/>Node.js front-end"]
@@ -21,6 +23,8 @@ flowchart LR
 
     staff -->|HTTPS| ui
     staff -. "OIDC sign-in" .-> entra
+    admin -. "Excel export" .-> spol
+    admin -->|"HTTPS, dataset key"| ui
     ui -. "token exchange" .-> entra
     ui -->|"STS service token"| api
     api --> pg
@@ -36,8 +40,12 @@ flowchart LR
   and on demand). Reads the CTS and SAM read model from the KRDS Data Bridge
   (`ls-keeper-data-bridge-backend`).
 - **PostgreSQL** — Aurora PostgreSQL with IAM authentication. Issues, workflow state, holdings
-  with their assignee, notes and recorded actions, the admin lists, audit trail, rule runs and
-  known users.
+  with their assignee, notes and recorded actions, the admin lists, audit trail, rule runs, SPOL
+  datasets and known users.
+- **SPOL connector** (`ls-cleanse-spol-connector`) — a PowerShell 7 script an admin runs on their
+  Windows laptop. It exports the SPOL SharePoint list through Excel, with the admin's own
+  Microsoft 365 sign-in, and sends it a page at a time to a SPOL dataset, through this UI, with
+  the dataset's key. An admin then processes the dataset from the admin pages.
 - **Microsoft Entra ID** — sign-in for internal staff in production (`AUTH_MODE=entra`), limited
   by enterprise-application assignment and the `cleanse-user` and `cleanse-admin` app roles. The UI
   proves its own identity to Entra with a CDP federated credential, so no client secret is stored;
@@ -53,6 +61,10 @@ flowchart LR
 - A CPH contains slashes, so it never goes in a back-end path. The holding page is
   `/holdings/01/036/8000`, and the UI passes the CPH to the back-end in the query string or the
   body.
+- `/api/v1/datasets/{id}` is the only route without a sign-in or a form token. The connector calls
+  it with a dataset's key in the `x-dataset-key` header, and the UI passes the request to the
+  back-end, which checks the key. It takes only JSON, of up to 4 MB, answers only in JSON, and
+  request logs leave the key out. Without a dataset's key it does nothing.
 - Configuration lives in `DEFRA/cdp-app-config` and secrets in the CDP Portal. The database
   schema is applied through Portal → Apply Changelog; the running service has no DDL rights.
 - Both services expose `GET /health`, log ECS-format JSON for OpenSearch, and send all outbound

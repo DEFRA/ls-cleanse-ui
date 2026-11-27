@@ -54,3 +54,23 @@
   font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", consolas, monospace;
   white-space: pre-wrap;
 }
+
+// Something to copy exactly, such as a dataset's key, so it breaks anywhere rather than overflow.
+.app-copyable {
+  @include govuk.govuk-font-size($size: 19);
+
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.app-code-block {
+  margin: 0 0 govuk.govuk-spacing(4);
+  padding: govuk.govuk-spacing(3);
+  border: 1px solid govuk.govuk-colour("black", $variant: "tint-80");
+  background-color: govuk.govuk-colour("black", $variant: "tint-95");
+  @include govuk.govuk-font-size($size: 16);
+
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

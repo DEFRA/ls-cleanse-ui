@@ -4,6 +4,7 @@ import { home } from '../routes/home/index.js'
 import { issues } from '../routes/issues/index.js'
 import { holdings } from '../routes/holdings/index.js'
 import { admin } from '../routes/admin/index.js'
+import { api } from '../routes/api/index.js'
 import { login } from '../routes/login/index.js'
 import { health } from '../routes/health/index.js'
 import { serveStaticFiles } from './serve-static-files.js'
@@ -18,7 +19,7 @@ export const router = {
       // Health-check route. Used by platform to check if service is running, do not remove!
       await server.register([health])
 
-      await server.register([home, issues, holdings, admin, login])
+      await server.register([home, issues, holdings, admin, login, api])
 
       // Static assets
       if (!config.get('isProduction') && !config.get('isTest')) {

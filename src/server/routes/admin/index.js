@@ -6,9 +6,18 @@ import {
 } from './runs-controller.js'
 import {
   importsController,
-  uploadImportController,
   importDetailController
 } from './imports-controller.js'
+import {
+  datasetsController,
+  createDatasetController,
+  datasetController,
+  processDatasetController,
+  renameDatasetController,
+  saveDatasetNameController,
+  deleteDatasetController,
+  confirmDeleteDatasetController
+} from './datasets-controller.js'
 import { statusController } from './status-controller.js'
 import { resetController, performResetController } from './reset-controller.js'
 import {
@@ -38,10 +47,10 @@ const menu = [
       'Rule engine run history and progress, and a way to start one by hand.'
   },
   {
-    text: 'SPOL imports',
-    href: '/admin/imports',
+    text: 'SPOL datasets',
+    href: '/admin/datasets',
     description:
-      'Upload a SharePoint extract and see which rows it could apply.'
+      'Load the SPOL list from your desktop with the SPOL connector, then process it onto the matching issues and holdings.'
   },
   {
     text: 'Users',
@@ -102,11 +111,47 @@ export const admin = {
         { method: 'GET', path: '/admin/runs/{runId}', ...runDetailController },
 
         { method: 'GET', path: '/admin/imports', ...importsController },
-        { method: 'POST', path: '/admin/imports', ...uploadImportController },
         {
           method: 'GET',
           path: '/admin/imports/{id}',
           ...importDetailController
+        },
+
+        { method: 'GET', path: '/admin/datasets', ...datasetsController },
+        {
+          method: 'POST',
+          path: '/admin/datasets',
+          ...createDatasetController
+        },
+        {
+          method: 'GET',
+          path: '/admin/datasets/{id}',
+          ...datasetController
+        },
+        {
+          method: 'POST',
+          path: '/admin/datasets/{id}/process',
+          ...processDatasetController
+        },
+        {
+          method: 'GET',
+          path: '/admin/datasets/{id}/rename',
+          ...renameDatasetController
+        },
+        {
+          method: 'POST',
+          path: '/admin/datasets/{id}/rename',
+          ...saveDatasetNameController
+        },
+        {
+          method: 'GET',
+          path: '/admin/datasets/{id}/delete',
+          ...deleteDatasetController
+        },
+        {
+          method: 'POST',
+          path: '/admin/datasets/{id}/delete',
+          ...confirmDeleteDatasetController
         },
 
         { method: 'GET', path: '/admin/status', ...statusController },
