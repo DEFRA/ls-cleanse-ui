@@ -19,7 +19,8 @@ describe('#startServer', () => {
 
     createServerSpy = vi.spyOn(createServerImport, 'createServer')
     hapiServerSpy = vi.spyOn(hapi, 'server')
-  })
+    // Importing the whole server here can outlast the default 10s while the other files run in parallel.
+  }, 30_000)
 
   afterAll(() => {
     vi.unstubAllEnvs()

@@ -194,6 +194,27 @@ describe('#createCleanseClient holdings and lists', () => {
       createCleanseClient(noAuth).updateHoldingIssues({})
     ).rejects.toMatchObject({ status: 400, subject: '3-AAAA' })
   })
+
+  test('Should read the settings, and change them for the person signed in', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => ok({ minimumIssueAgeDays: 7 }))
+    const client = createCleanseClient(noAuth).forRequest('trace', {
+      actingUserId: 'user-1'
+    })
+
+    await client.getSettings()
+    await client.updateSettings({ minimumIssueAgeDays: 7 })
+
+    const [readUrl, read] = fetchSpy.mock.calls[0]
+    const [writeUrl, write] = fetchSpy.mock.calls[1]
+    expect(new URL(readUrl).pathname).toBe('/v1/settings')
+    expect(read.method).toBe('GET')
+    expect(new URL(writeUrl).pathname).toBe('/v1/settings')
+    expect(write.method).toBe('PUT')
+    expect(JSON.parse(write.body)).toEqual({ minimumIssueAgeDays: 7 })
+    expect(write.headers['x-cleanse-user-id']).toBe('user-1')
+  })
 })
 
 describe('#createCleanseClient through the CDP developer gateway', () => {

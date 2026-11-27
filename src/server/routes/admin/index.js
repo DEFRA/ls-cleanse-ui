@@ -24,6 +24,10 @@ import {
   addOutcomeReasonController,
   setOutcomeReasonActiveController
 } from './coded-values-controller.js'
+import {
+  settingsController,
+  updateSettingsController
+} from './settings-controller.js'
 
 /** The admin menu. Reachable by URL and from the footer, never from the service navigation. */
 const menu = [
@@ -56,6 +60,12 @@ const menu = [
     href: '/admin/outcome-reasons',
     description:
       "The reasons caseworkers can give for resolving an issue, or for why it can't be resolved."
+  },
+  {
+    text: 'Settings',
+    href: '/admin/settings',
+    description:
+      'How many days old an issue must be before the Issues List and Grouped views show it.'
   },
   {
     text: 'Status',
@@ -137,6 +147,13 @@ export const admin = {
           method: 'POST',
           path: '/admin/outcome-reasons/{id}/active',
           ...setOutcomeReasonActiveController
+        },
+
+        { method: 'GET', path: '/admin/settings', ...settingsController },
+        {
+          method: 'POST',
+          path: '/admin/settings',
+          ...updateSettingsController
         },
 
         { method: 'GET', path: '/admin/reset', ...resetController },

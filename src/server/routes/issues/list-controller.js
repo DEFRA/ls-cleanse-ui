@@ -274,6 +274,8 @@ function issuesController(viewName) {
             unassigned: filters.assignee === 'unassigned' ? true : undefined,
             sortBy: 'UpdatedAtUtc',
             sortDirection: 'Descending',
+            // Not a filter: recent issues often clear themselves, so these views never show them.
+            applyMinimumAge: true,
             pageNumber: filters.page,
             pageSize
           },
