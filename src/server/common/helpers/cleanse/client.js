@@ -250,6 +250,19 @@ export function createCleanseClient(options = {}) {
       getDiagnostics: (groupId) =>
         request('GET', '/v1/diagnostics', { query: { groupId } }),
 
+      getMiStatus: (groupId) =>
+        request('GET', `/v1/groups/${segment(groupId)}/mi/status`),
+
+      getMiWork: (groupId, query) =>
+        request('GET', `/v1/groups/${segment(groupId)}/mi/work`, { query }),
+
+      getMiBacklog: (groupId, query) =>
+        request('GET', `/v1/groups/${segment(groupId)}/mi/backlog`, { query }),
+
+      /** Names the admin who asked, so the backend's log says who. */
+      rebuildMi: (groupId) =>
+        change('POST', `/v1/groups/${segment(groupId)}/mi/rebuild`),
+
       /**
        * The reset key is supplied by the operator per request and never held by this service,
        * so it travels as a header on this one call rather than through the auth strategy.

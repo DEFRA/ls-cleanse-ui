@@ -1,0 +1,398 @@
+@use "../govuk" as govuk;
+
+// The MI dashboard. Charts are SVG drawn by the page's script; everything here is a class, as the
+// content security policy allows no inline styles.
+
+$app-chart-border: govuk.govuk-colour("black", $variant: "tint-80");
+$app-chart-tint: govuk.govuk-colour("black", $variant: "tint-95");
+
+.app-width-container--wide {
+  max-width: 1280px;
+}
+
+// GOV.UK gives buttons a display, which would otherwise beat the hidden attribute.
+.app-dashboard [hidden] {
+  display: none;
+}
+
+.app-dashboard__filters {
+  margin-bottom: govuk.govuk-spacing(6);
+  padding: govuk.govuk-spacing(4) govuk.govuk-spacing(4) 0;
+  border: 1px solid $app-chart-border;
+  background-color: $app-chart-tint;
+
+  .govuk-form-group {
+    margin-bottom: govuk.govuk-spacing(4);
+  }
+}
+
+.app-dashboard__selects,
+.app-dashboard__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 govuk.govuk-spacing(6);
+}
+
+.app-dashboard--loading .app-dashboard__panel {
+  opacity: .4;
+  transition: opacity .2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-dashboard--loading .app-dashboard__panel {
+    transition: none;
+  }
+}
+
+.app-dashboard__table-wrapper {
+  overflow-x: auto;
+}
+
+.app-headlines {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: govuk.govuk-spacing(3);
+  margin-bottom: govuk.govuk-spacing(6);
+
+  @include govuk.govuk-media-query($from: tablet) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.app-headline {
+  padding: govuk.govuk-spacing(3);
+  border: 1px solid $app-chart-border;
+  border-top: 5px solid govuk.govuk-colour("blue");
+}
+
+.app-headline__label {
+  margin-bottom: govuk.govuk-spacing(1);
+  font-weight: govuk.$govuk-font-weight-bold;
+}
+
+.app-headline__value {
+  margin: 0 0 govuk.govuk-spacing(1);
+  @include govuk.govuk-font($size: 36, $weight: bold);
+}
+
+.app-headline__comparison {
+  margin-bottom: govuk.govuk-spacing(2);
+}
+
+.app-headline__spark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.app-dashboard__charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: govuk.govuk-spacing(4);
+  margin-bottom: govuk.govuk-spacing(6);
+
+  @include govuk.govuk-media-query($from: desktop) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.app-chart {
+  margin: 0;
+  padding: govuk.govuk-spacing(3);
+  border: 1px solid $app-chart-border;
+}
+
+.app-chart--wide {
+  grid-column: 1 / -1;
+}
+
+.app-chart__title {
+  margin-bottom: govuk.govuk-spacing(1);
+}
+
+.app-chart__summary {
+  margin-bottom: govuk.govuk-spacing(2);
+}
+
+.app-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: govuk.govuk-spacing(1) govuk.govuk-spacing(3);
+  margin-bottom: govuk.govuk-spacing(2);
+}
+
+.app-chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: govuk.govuk-spacing(1);
+  padding: 2px govuk.govuk-spacing(1);
+  border: 1px solid transparent;
+  background: none;
+  color: govuk.govuk-functional-colour(text);
+  cursor: pointer;
+  @include govuk.govuk-font($size: 16);
+
+  &[aria-pressed="false"] {
+    color: govuk.govuk-functional-colour(secondary-text);
+    text-decoration: line-through;
+
+    .app-chart__swatch {
+      opacity: .35;
+    }
+  }
+
+  &:hover {
+    border-color: $app-chart-border;
+  }
+
+  &:focus {
+    @include govuk.govuk-focused-text;
+  }
+}
+
+// The swatch shows the series' pattern as well as its colour, as the chart does.
+.app-chart__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background-color: var(--swatch-colour, #505a5f);
+
+  &--hatch {
+    background-image: repeating-linear-gradient(-45deg, transparent 0 3px, #ffffff 3px 4.5px);
+  }
+
+  &--cross {
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 3px, #ffffff 3px 4px),
+      repeating-linear-gradient(-45deg, transparent 0 3px, #ffffff 3px 4px);
+  }
+
+  &--dots {
+    background-image: radial-gradient(#ffffff 1.2px, transparent 1.4px);
+    background-size: 5px 5px;
+  }
+
+  &--line {
+    height: 3px;
+  }
+}
+
+.app-chart__plot {
+  position: relative;
+
+  &:focus {
+    outline: 3px solid govuk.govuk-functional-colour(focus);
+    outline-offset: 2px;
+  }
+}
+
+.app-chart__svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+
+  text {
+    font-family: inherit;
+  }
+}
+
+.app-chart__axis,
+.app-chart__grid {
+  color: govuk.govuk-functional-colour(secondary-text);
+  font-size: 14px;
+
+  text {
+    fill: govuk.govuk-functional-colour(secondary-text);
+  }
+}
+
+.app-chart__grid line {
+  stroke: govuk.govuk-colour("black", $variant: "tint-80");
+  stroke-dasharray: 2 3;
+}
+
+.app-chart__value,
+.app-chart__category-labels text,
+.app-chart__node-label,
+.app-chart__tick-label {
+  fill: govuk.govuk-functional-colour(text);
+  font-size: 14px;
+}
+
+.app-chart__value {
+  font-weight: govuk.$govuk-font-weight-bold;
+}
+
+.app-chart__hit--selectable,
+.app-chart__band--selectable {
+  cursor: pointer;
+}
+
+.app-chart__brush .selection {
+  fill: govuk.govuk-colour("blue");
+  fill-opacity: .15;
+  stroke: govuk.govuk-colour("blue");
+}
+
+.app-chart__readout {
+  margin-top: govuk.govuk-spacing(2);
+  padding: govuk.govuk-spacing(2);
+  border-left: 5px solid govuk.govuk-colour("blue");
+  background-color: $app-chart-tint;
+  @include govuk.govuk-font($size: 16);
+}
+
+.app-chart__readout-line {
+  display: block;
+}
+
+.app-chart__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: govuk.govuk-spacing(3);
+  margin-top: govuk.govuk-spacing(2);
+}
+
+.app-chart__table-holder {
+  margin-top: govuk.govuk-spacing(2);
+  overflow-x: auto;
+}
+
+.app-chart__empty {
+  margin: govuk.govuk-spacing(4) 0;
+  color: govuk.govuk-functional-colour(secondary-text);
+}
+
+.app-chart__note,
+.app-chart__links {
+  margin: govuk.govuk-spacing(2) 0 0;
+}
+
+// A button that does something on the page but reads as a link.
+.app-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: govuk.govuk-functional-colour(link);
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+  @include govuk.govuk-font($size: 16);
+
+  &:hover {
+    color: govuk.govuk-functional-colour(link-hover);
+  }
+
+  &:focus {
+    @include govuk.govuk-focused-text;
+  }
+}
+
+.app-sort-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: govuk.govuk-functional-colour(link);
+  text-align: inherit;
+  cursor: pointer;
+  @include govuk.govuk-font($size: 16, $weight: bold);
+
+  &:focus {
+    @include govuk.govuk-focused-text;
+  }
+
+  [aria-sort="ascending"] > &::after {
+    content: " \25B2";
+  }
+
+  [aria-sort="descending"] > &::after {
+    content: " \25BC";
+  }
+}
+
+.app-inline-bar {
+  display: block;
+  margin: 4px 0 0 auto;
+}
+
+.app-people__team .govuk-table__header,
+.app-people__team .govuk-table__cell {
+  border-top: 2px solid govuk.govuk-functional-colour(text);
+}
+
+.app-people__unassigned {
+  @include govuk.govuk-font($size: 16);
+}
+
+// Who does what: darker cells hold more actions, and the number is always in the cell.
+.app-heat {
+  &--0 {
+    color: govuk.govuk-functional-colour(secondary-text);
+  }
+
+  &--1 {
+    background-color: #d2e2f1;
+  }
+
+  &--2 {
+    background-color: #a5c6e3;
+  }
+
+  &--3 {
+    background-color: #4a8bc9;
+    color: #ffffff;
+  }
+
+  &--4 {
+    background-color: govuk.govuk-colour("blue");
+    color: #ffffff;
+  }
+}
+
+.app-small-multiples__row {
+  display: flex;
+  align-items: center;
+  gap: govuk.govuk-spacing(2);
+  border-bottom: 1px solid $app-chart-border;
+}
+
+.app-small-multiples__name {
+  flex: 0 0 25%;
+  max-width: 180px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-small-multiples__plot {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-dashboard__lists {
+  max-width: 960px;
+}
+
+@media print {
+  .app-dashboard__filters,
+  .app-dashboard__message,
+  .app-chart__legend,
+  .app-chart__actions,
+  .govuk-tabs__list,
+  .govuk-back-link {
+    display: none;
+  }
+
+  // The script shows every table before printing; this shows every tab.
+  .app-dashboard .govuk-tabs__panel--hidden {
+    display: block;
+  }
+
+  .app-chart {
+    break-inside: avoid;
+  }
+
+  .app-dashboard__charts {
+    display: block;
+  }
+}

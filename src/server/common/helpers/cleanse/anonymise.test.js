@@ -343,6 +343,66 @@ describe('#createAnonymiser', () => {
     })
   })
 
+  test('Should anonymise the people and holdings on the dashboard, keeping the figures', () => {
+    const { responses } = createAnonymiser(key)
+    const realId = 'a8c4dd20-10ad-5f1e-86b3-9b0fdc54db57'
+    const actionType = '0c9b6d2e-2f0c-4a43-9d7e-1f2a3b4c5d6e'
+
+    const work = responses.getMiWork({
+      userId: realId,
+      people: [
+        { userId: realId, name: 'Real Person', named: true, resolved: 4 },
+        { userId: null, name: 'Not named', named: false, resolved: 2 }
+      ],
+      actionsByPerson: [{ userId: realId, actionTypeId: actionType, count: 3 }],
+      actionTypes: [{ id: actionType, name: 'Phoned the keeper', count: 3 }]
+    })
+    const backlog = responses.getMiBacklog({
+      oldestOpenHoldings: [
+        {
+          cph: '12/345/6789',
+          assignedUserId: realId,
+          assignedTo: 'Real Person'
+        }
+      ],
+      stalled: { days: 14, count: 1, holdings: [{ cph: '12/345/6789' }] },
+      openAtEnd: 9
+    })
+
+    expectNoRealValues(JSON.stringify([work, backlog]))
+    expect(work.people[0]).toMatchObject({ named: true, resolved: 4 })
+    expect(work.people[1]).toEqual({
+      userId: null,
+      name: 'Not named',
+      named: false,
+      resolved: 2
+    })
+    expect(work.actionsByPerson[0].userId).toBe(work.people[0].userId)
+    expect(work.actionTypes[0].name).toBe('Phoned the keeper')
+    expect(backlog.oldestOpenHoldings[0].cph).toMatch(/^12\/\d{3}\/\d{4}$/)
+    expect(backlog.stalled.holdings[0].cph).toBe(
+      backlog.oldestOpenHoldings[0].cph
+    )
+    expect(backlog.openAtEnd).toBe(9)
+  })
+
+  test('Should ask for a person on the dashboard by their real id', async () => {
+    const anonymiser = createAnonymiser(key)
+    const realId = 'a8c4dd20-10ad-5f1e-86b3-9b0fdc54db57'
+    const getMiWork = vi.fn(async () => ({ people: [] }))
+    const client = anonymiseClient(
+      { forRequest: () => ({ getMiWork }) },
+      anonymiser
+    )
+    const shown = anonymiser.responses.getMiWork({
+      people: [{ userId: realId, name: 'Real Person', named: true }]
+    }).people[0].userId
+
+    await client.forRequest('trace').getMiWork('cts-sam', { userId: shown })
+
+    expect(getMiWork).toHaveBeenCalledWith('cts-sam', { userId: realId })
+  })
+
   test('Should turn a fake shown on screen back into the real search term', () => {
     const anonymiser = createAnonymiser(key)
     const { context } = anonymiser.responses.getIssue(realIssue)

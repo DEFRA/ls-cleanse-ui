@@ -19,6 +19,12 @@ import {
   confirmDeleteDatasetController
 } from './datasets-controller.js'
 import { statusController } from './status-controller.js'
+import {
+  dashboardController,
+  dashboardDataController,
+  dashboardStatusController,
+  rebuildDashboardController
+} from './dashboard-controller.js'
 import { resetController, performResetController } from './reset-controller.js'
 import {
   usersController,
@@ -40,6 +46,12 @@ import {
 
 /** The admin menu. Reachable by URL and from the footer, never from the service navigation. */
 const menu = [
+  {
+    text: 'Dashboard',
+    href: '/admin/dashboard',
+    description:
+      'Figures and charts on the work done in Cleanse and the progress made on the issues.'
+  },
   {
     text: 'Runs',
     href: '/admin/runs',
@@ -105,6 +117,23 @@ export const admin = {
     register(server) {
       const routes = [
         { method: 'GET', path: '/admin', ...adminHomeController },
+
+        { method: 'GET', path: '/admin/dashboard', ...dashboardController },
+        {
+          method: 'GET',
+          path: '/admin/dashboard/data',
+          ...dashboardDataController
+        },
+        {
+          method: 'GET',
+          path: '/admin/dashboard/status',
+          ...dashboardStatusController
+        },
+        {
+          method: 'POST',
+          path: '/admin/status/rebuild-dashboard',
+          ...rebuildDashboardController
+        },
 
         { method: 'GET', path: '/admin/runs', ...runsController },
         { method: 'POST', path: '/admin/runs', ...triggerRunController },

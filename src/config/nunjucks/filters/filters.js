@@ -3,6 +3,7 @@ import assign from 'lodash/assign.js'
 import { formatDate } from './format-date.js'
 import { formatCurrency } from './format-currency.js'
 import { govukDate, govukDateTime, daysUntil, duration } from './govuk-date.js'
+import { jsonScript } from './json-script.js'
 
 export {
   assign,
@@ -11,5 +12,6 @@ export {
   govukDate,
   govukDateTime,
   daysUntil,
-  duration
+  duration,
+  jsonScript
 }

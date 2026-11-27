@@ -19,6 +19,8 @@ is where caseworkers work through those issues:
   reasons.
 - Admins set how many days old an issue must be before the issues list shows it, 14 by default, so
   a passing mismatch between CTS and SAM that clears itself never reaches caseworkers.
+- Admins see a dashboard at `/admin/dashboard`: the work done, by person and action, what came of
+  it, and how the backlog of issues and holdings has changed, over a period they choose.
 
 It is built with Node.js, Hapi and GOV.UK Frontend from the CDP Node.js frontend template. It holds
 no data of its own: everything is read from and written to `ls-cleanse-api`.

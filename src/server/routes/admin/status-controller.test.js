@@ -71,11 +71,37 @@ const healthy = {
   }
 }
 
-const json = (body, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' }
-  })
+/**
+ * Like a fetch Response, but its body can be read more than once: the page asks the backend for
+ * its diagnostics and for the dashboard's status at the same time.
+ */
+const json = (body, status = 200) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => structuredClone(body)
+})
+
+const dashboardStatus = {
+  groupId: 'cts-sam',
+  built: true,
+  asAtUtc: '2026-10-23T09:40:00Z',
+  builtAtUtc: '2026-10-23T09:30:00Z',
+  historyFromUtc: '2026-10-01T09:30:00Z',
+  durationMilliseconds: 840,
+  issues: 12,
+  events: 60,
+  mismatches: 0,
+  stale: false,
+  building: false
+}
+
+/** The diagnostics, and the dashboard's status, each from its own address. */
+const backendAnswers = (body, figures = dashboardStatus) =>
+  vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (url) =>
+      String(url).includes('/mi/status') ? json(figures) : json(body)
+    )
 
 /** The check table, as [state, check, detail] for each row. */
 function checksIn(html) {
@@ -315,6 +341,60 @@ describe('#admin status', () => {
     const { result } = await get()
 
     expect(result).toContain('app-status--unknown')
+  })
+
+  test('Should say when the dashboard figures were last brought up to date, and offer a rebuild', async () => {
+    backendAnswers(healthy)
+
+    const { result } = await get()
+
+    expect(result).toContain('Dashboard figures')
+    expect(result).toContain('23 October 2026 at 9:40am')
+    expect(result).toContain('Taking 840 milliseconds, from 12 issues')
+    expect(result).toContain(
+      'Every issue&#39;s history led to its current state'
+    )
+    expect(result).toContain('action="/admin/status/rebuild-dashboard"')
+    expect(result).not.toContain('latest changes may be missing')
+  })
+
+  test('Should warn when the dashboard figures are behind, or say they are not built yet', async () => {
+    backendAnswers(healthy, { ...dashboardStatus, stale: true, mismatches: 3 })
+    const behind = (await get()).result
+    expect(behind).toContain('latest changes may be missing')
+    expect(behind).toContain('3 issues&#39; histories did not lead')
+
+    backendAnswers(healthy, {
+      groupId: 'cts-sam',
+      built: false,
+      building: true,
+      stale: false
+    })
+    const unbuilt = (await get()).result
+    expect(unbuilt).toContain('Not built yet')
+    expect(unbuilt).toContain('Building them now.')
+  })
+
+  test('Should ask the backend to rebuild the dashboard figures, naming no one under the password', async () => {
+    const fetchSpy = backendAnswers(healthy)
+    const page = await get()
+    const crumb = /name="crumb" value="([^"]+)"/.exec(page.result)?.[1]
+    const cookie = page.headers['set-cookie']?.[0].split(';')[0]
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/admin/status/rebuild-dashboard',
+      headers: { cookie },
+      payload: { crumb },
+      auth: signedInAsAdmin
+    })
+
+    expect(response.statusCode).toBe(statusCodes.found)
+    expect(response.headers.location).toBe('/admin/status#dashboard-figures')
+    const [url, options] = fetchSpy.mock.calls.at(-1)
+    expect(url).toBe('http://localhost:8085/v1/groups/cts-sam/mi/rebuild')
+    expect(options.method).toBe('POST')
+    expect(options.headers['x-cleanse-user-id']).toBeUndefined()
   })
 })
 
