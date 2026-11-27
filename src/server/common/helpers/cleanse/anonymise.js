@@ -59,7 +59,10 @@ const passThroughMethods = new Set([
   // Entries an admin types, such as "Phoned the keeper": things done, never people.
   'listCodedValues',
   'addCodedValue',
-  'setCodedValueActive'
+  'setCodedValueActive',
+  // A number of days.
+  'getSettings',
+  'updateSettings'
 ])
 
 /** Calls whose body names a holding, by a CPH that may be a fake read off the screen. */

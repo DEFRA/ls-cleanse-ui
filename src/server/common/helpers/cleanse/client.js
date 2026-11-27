@@ -239,6 +239,10 @@ export function createCleanseClient(options = {}) {
       setCodedValueActive: (list, id, body) =>
         change('PUT', `/v1/lists/${segment(list)}/${segment(id)}/active`, body),
 
+      getSettings: () => request('GET', '/v1/settings'),
+
+      updateSettings: (body) => change('PUT', '/v1/settings', body),
+
       searchRuns: (query) => request('GET', '/v1/runs', { query }),
 
       getRun: (runId) => request('GET', `/v1/runs/${segment(runId)}`),

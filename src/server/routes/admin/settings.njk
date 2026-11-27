@@ -1,0 +1,55 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to admin", href: "/admin" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#minimumIssueAgeDays" }]
+      }) }}
+    {% endif %}
+
+    {% if notification %}
+      {{ govukNotificationBanner({ type: "success", titleText: "Success", text: notification }) }}
+    {% endif %}
+
+    <h1 class="govuk-heading-l">{{ pageTitle }}</h1>
+
+    <form method="post" action="/admin/settings" novalidate>
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+
+      {{ govukInput({
+        id: "minimumIssueAgeDays",
+        name: "minimumIssueAgeDays",
+        value: minimumIssueAgeDays,
+        inputmode: "numeric",
+        spellcheck: false,
+        classes: "govuk-input--width-3",
+        label: { text: "Minimum issue age", classes: "govuk-label--m" },
+        hint: {
+          text: "The Issues List and Grouped views only show an issue once it was raised this many days ago. Many newer issues are a passing mismatch between CTS and SAM that clears itself. Enter 0 to show every issue."
+        },
+        suffix: { text: "days" },
+        errorMessage: { text: error } if error
+      }) }}
+
+      {{ govukButton({ text: "Save" }) }}
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}
