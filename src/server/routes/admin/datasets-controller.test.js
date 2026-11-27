@@ -299,7 +299,12 @@ describe('#admin SPOL datasets', () => {
     expect($(`a[href="/admin/datasets/${id}/delete"]`)).toHaveLength(1)
     const run = $('tbody tr')
     expect(run.find(`a[href="/admin/imports/${jobId}"]`)).toHaveLength(1)
-    expect(run.text()).toContain('6')
+    expect(
+      run
+        .find('td.govuk-table__cell--numeric')
+        .map((_, cell) => $(cell).text().trim())
+        .get()
+    ).toEqual(['31,887', '31,000', '887', '6'])
     expect(result).not.toContain(key)
   })
 

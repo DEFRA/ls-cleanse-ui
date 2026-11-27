@@ -123,10 +123,10 @@
                   <span class="app-secondary-text">{{ job.percentComplete }}%</span>
                 {% endif %}
               </td>
-              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.totalRows }}</td>
-              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.matched }}</td>
-              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.unmatched }}</td>
-              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.usersCreated }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.counts.rows }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.counts.matched }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.counts.unmatched }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.counts.usersCreated }}</td>
             </tr>
           {% endfor %}
         </tbody>

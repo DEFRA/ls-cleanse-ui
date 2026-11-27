@@ -19,7 +19,13 @@ const isRunning = (job) => ['pending', 'processing'].includes(job?.status)
 
 const decorateRun = (job) => ({
   ...job,
-  statusDetail: describeImportStatus(job.status)
+  statusDetail: describeImportStatus(job.status),
+  counts: {
+    rows: count(job.totalRows),
+    matched: count(job.matched),
+    unmatched: count(job.unmatched),
+    usersCreated: count(job.usersCreated)
+  }
 })
 
 function decorate(dataset) {
