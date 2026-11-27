@@ -80,6 +80,7 @@ export const holdingStatuses = [
  */
 export const suppressionPeriods = [
   { id: '7', name: '7 days', days: 7 },
+  { id: '14', name: '14 days', days: 14 },
   { id: '30', name: '30 days', days: 30 },
   { id: '90', name: '90 days', days: 90 },
   { id: '180', name: '6 months', days: 180 }

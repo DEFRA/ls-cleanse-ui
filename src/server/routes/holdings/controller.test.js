@@ -263,7 +263,18 @@ describe('#holding page', () => {
           .get()
       ).toEqual(['No reason given', 'Fixed in SAM'])
       expect($('#cantResolveReason option').last().val()).toBe(ids.died)
-      expect($('#period option').length).toBeGreaterThan(1)
+      expect(
+        $('#period option')
+          .map((_, option) => $(option).text())
+          .get()
+      ).toEqual([
+        'Select a period',
+        '7 days',
+        '14 days',
+        '30 days',
+        '90 days',
+        '6 months'
+      ])
     })
 
     test("Should not offer Can't resolve while it has no reason to choose", async () => {
@@ -361,22 +372,25 @@ describe('#holding page', () => {
       })
     })
 
-    test('Should suppress the selected issues until the end of the chosen period', async () => {
-      const writes = stubBackend()
+    test.each([14, 30])(
+      'Should suppress the selected issues until the end of a %i day period',
+      async (period) => {
+        const writes = stubBackend()
 
-      await post({
-        form: 'issues',
-        issues: '3:3-AAAA',
-        workflowStatus: 'suppressed',
-        period: '30'
-      })
+        await post({
+          form: 'issues',
+          issues: '3:3-AAAA',
+          workflowStatus: 'suppressed',
+          period: String(period)
+        })
 
-      const until = new Date(writes[0].body.suppressUntilUtc)
-      const days = (until - Date.now()) / 86400000
-      expect(days).toBeGreaterThan(29.9)
-      expect(days).toBeLessThan(30.1)
-      expect(writes[0].body.reasonId).toBeUndefined()
-    })
+        const until = new Date(writes[0].body.suppressUntilUtc)
+        const days = (until - Date.now()) / 86400000
+        expect(days).toBeGreaterThan(period - 0.1)
+        expect(days).toBeLessThan(period + 0.1)
+        expect(writes[0].body.reasonId).toBeUndefined()
+      }
+    )
 
     test.each([
       [
