@@ -215,10 +215,28 @@ function buildMatrix(breakdown = []) {
   }
 }
 
+/**
+ * When the dashboard's figures were last brought up to date. A backend that cannot say, or is too
+ * old to have a dashboard, leaves the section saying so rather than failing the page.
+ */
+async function askDashboard(request, groupId) {
+  try {
+    return { figures: await request.cleanse.getMiStatus(groupId) }
+  } catch (error) {
+    if (!(error instanceof CleanseApiError)) {
+      throw error
+    }
+    return { figures: null, problem: error.detail ?? error.message }
+  }
+}
+
 export const statusController = {
   async handler(request, h) {
     const groupId = config.get('cleanse.groupId')
-    const { diagnostics, connection } = await askBackend(request, groupId)
+    const [{ diagnostics, connection }, dashboard] = await Promise.all([
+      askBackend(request, groupId),
+      askDashboard(request, groupId)
+    ])
     const now = new Date()
 
     const checks = [
@@ -242,6 +260,8 @@ export const statusController = {
       matrix: diagnostics ? buildMatrix(diagnostics.issues.breakdown) : null,
       lastResetAtUtc: diagnostics?.lastResetAtUtc ?? null,
       reachedBackend: Boolean(diagnostics),
+      dashboard,
+      dashboardError: request.yar.flash('dashboardError')[0] ?? null,
       notification: request.yar.flash('notification')[0] ?? null
     })
   }

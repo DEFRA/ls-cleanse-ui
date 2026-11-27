@@ -65,6 +65,13 @@ flowchart LR
   it with a dataset's key in the `x-dataset-key` header, and the UI passes the request to the
   back-end, which checks the key. It takes only JSON, of up to 4 MB, answers only in JSON, and
   request logs leave the key out. Without a dataset's key it does nothing.
+- Pages use JavaScript only to enhance what already works without it, except the admin dashboard
+  (`/admin/dashboard`), which draws its charts as SVG in the browser with D3. It is a Vite entry
+  of its own, `dashboard.js`, loaded only on that page and bundled with D3 at build time, so the
+  content security policy is unchanged. The page carries its first figures in a JSON block, and
+  later filter changes fetch `/admin/dashboard/data`. The figures come from the back-end's
+  dashboard tables, which it rebuilds from the issue and holding history when that changes, not
+  from the live tables on each request.
 - Configuration lives in `DEFRA/cdp-app-config` and secrets in the CDP Portal. The database
   schema is applied through Portal → Apply Changelog; the running service has no DDL rights.
 - Both services expose `GET /health`, log ECS-format JSON for OpenSearch, and send all outbound

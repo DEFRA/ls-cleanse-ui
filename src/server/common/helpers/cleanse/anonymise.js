@@ -65,7 +65,10 @@ const passThroughMethods = new Set([
   'updateSettings',
   // Nothing, and a page's counts.
   'deleteSpolDataset',
-  'loadSpolDatasetPage'
+  'loadSpolDatasetPage',
+  // When the dashboard's figures were built, and how many there are.
+  'getMiStatus',
+  'rebuildMi'
 ])
 
 /** Calls whose body names a holding, by a CPH that may be a fake read off the screen. */
@@ -343,6 +346,23 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
     })
   const users = (list) => (Array.isArray(list) ? list.map(user) : list)
 
+  const each = (transform) => (list) =>
+    Array.isArray(list) ? list.map(transform) : list
+
+  // "Not named" is the service, not a person, so only a named person's name is faked.
+  const miPerson = (person) =>
+    rewrite(person, {
+      userId,
+      name: (name) => (person.named ? personName(name) : name)
+    })
+
+  const miHolding = (value) =>
+    rewrite(value, {
+      cph: fakeCph,
+      assignedUserId: userId,
+      assignedTo: personName
+    })
+
   const responses = {
     recordLogin: user,
     registerUsers: (value) =>
@@ -372,7 +392,19 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
     createSpolDataset: (value) => rewrite(value, { dataset }),
     renameSpolDataset: dataset,
     processSpolDataset: importJob,
-    checkSpolDatasetKey: dataset
+    checkSpolDatasetKey: dataset,
+    // Action types and reasons are things done, so they pass through as on the admin pages.
+    getMiWork: (value) =>
+      rewrite(value, {
+        userId,
+        people: each(miPerson),
+        actionsByPerson: each((entry) => rewrite(entry, { userId }))
+      }),
+    getMiBacklog: (value) =>
+      rewrite(value, {
+        oldestOpenHoldings: each(miHolding),
+        stalled: (stalled) => rewrite(stalled, { holdings: each(miHolding) })
+      })
   }
 
   /** Turns a fake the user read off the screen back into the value the backend holds. */
@@ -427,6 +459,17 @@ export function anonymiseClient(client, anonymiser) {
     if (name === 'getHolding') {
       return async (groupId, cph) =>
         transform(await method(groupId, anonymiser.realSearchTerm(cph)))
+    }
+
+    // The Person filter is a user id read off the page, so it is a fake to turn back.
+    if (name === 'getMiWork') {
+      return async (groupId, query = {}) =>
+        transform(
+          await method(groupId, {
+            ...query,
+            userId: anonymiser.realSearchTerm(query.userId)
+          })
+        )
     }
 
     if (name === 'assignHolding') {

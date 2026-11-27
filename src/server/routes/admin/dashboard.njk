@@ -1,0 +1,194 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+
+{# Wider than other pages, so that the charts have room. #}
+{% set containerClasses = "app-width-container--wide" %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ text: "Back to admin", href: "/admin" }) }}
+{% endblock %}
+
+{% block content %}
+
+{% set customFields %}
+  <div class="app-dashboard__dates">
+    {{ govukInput({
+      id: "from",
+      name: "from",
+      type: "date",
+      label: { text: "From" },
+      classes: "govuk-input--width-10",
+      value: filters.from,
+      attributes: { max: today }
+    }) }}
+    {{ govukInput({
+      id: "to",
+      name: "to",
+      type: "date",
+      label: { text: "To" },
+      classes: "govuk-input--width-10",
+      value: filters.to,
+      attributes: { max: today }
+    }) }}
+  </div>
+{% endset %}
+
+{% set periodItems = [] %}
+{% for period in periods %}
+  {% set _ = periodItems.push({
+    value: period.id,
+    text: period.text,
+    checked: filters.period == period.id,
+    conditional: { html: customFields } if period.id == "custom" else undefined
+  }) %}
+{% endfor %}
+
+{% set intervalItems = [] %}
+{% for interval in intervals %}
+  {% set _ = intervalItems.push({
+    value: interval.id,
+    text: interval.text,
+    checked: (filters.interval or (status and embedded.figures.work.period.interval)) == interval.id
+  }) %}
+{% endfor %}
+
+{% set ruleItems = [{ value: "", text: "All rules" }] %}
+{% for rule in rules %}
+  {% set _ = ruleItems.push({ value: rule.id, text: rule.text, selected: filters.ruleId == rule.id }) %}
+{% endfor %}
+
+{% set personItems = [{ value: "", text: "Everyone" }] %}
+{% for person in people %}
+  {% set _ = personItems.push({ value: person.userId, text: person.name, selected: filters.userId == person.userId }) %}
+{% endfor %}
+
+<div class="app-dashboard" data-module="app-dashboard"
+     data-data-url="/admin/dashboard/data" data-status-url="/admin/dashboard/status">
+
+  {% if filterError %}
+    {{ govukErrorSummary({
+      titleText: "There is a problem with the filters",
+      errorList: [{ text: filterError, href: "#period" }]
+    }) }}
+  {% endif %}
+
+  <span class="govuk-caption-l">{{ groupName }}</span>
+  <h1 class="govuk-heading-l">Dashboard</h1>
+
+  <p class="govuk-body" data-dashboard-status>
+    {% if status and status.built %}
+      Figures as at {{ status.asAtUtc | govukDateTime }}. They are kept up to date every few minutes.
+      {% if status.historyFromUtc %}History from {{ status.historyFromUtc | govukDate }}.{% endif %}
+    {% endif %}
+  </p>
+  <div class="govuk-visually-hidden" aria-live="polite" data-dashboard-live></div>
+
+  {% if status and status.stale %}
+    {{ govukWarningText({ text: "These figures are more than 15 minutes old, so the latest changes may be missing." }) }}
+  {% endif %}
+
+  {% if loadError %}
+    <div class="govuk-inset-text" data-dashboard-error>
+      <p class="govuk-body">The figures could not be loaded: {{ loadError }}</p>
+      <a class="govuk-link" href="">Try again</a>
+    </div>
+  {% endif %}
+
+  <form class="app-dashboard__filters" method="get" action="/admin/dashboard" novalidate data-dashboard-filters>
+    <input type="hidden" name="tab" value="{{ filters.tab }}" data-dashboard-tab>
+
+    {{ govukRadios({
+      idPrefix: "period",
+      name: "period",
+      classes: "govuk-radios--small govuk-radios--inline",
+      fieldset: { legend: { text: "Period", classes: "govuk-fieldset__legend--s" } },
+      items: periodItems
+    }) }}
+
+    {{ govukRadios({
+      idPrefix: "interval",
+      name: "interval",
+      classes: "govuk-radios--small govuk-radios--inline",
+      fieldset: { legend: { text: "Each point is a", classes: "govuk-fieldset__legend--s" } },
+      hint: { text: "Day up to 31 days, week up to 12 months and month beyond, unless you choose." },
+      items: intervalItems
+    }) }}
+
+    <div class="app-dashboard__selects">
+      {{ govukSelect({
+        id: "ruleId",
+        name: "ruleId",
+        label: { text: "Rule", classes: "govuk-label--s" },
+        items: ruleItems
+      }) }}
+
+      {{ govukSelect({
+        id: "userId",
+        name: "userId",
+        label: { text: "Person", classes: "govuk-label--s" },
+        items: personItems
+      }) }}
+
+      {{ govukRadios({
+        idPrefix: "unit",
+        name: "unit",
+        classes: "govuk-radios--small govuk-radios--inline",
+        fieldset: { legend: { text: "Open figures for", classes: "govuk-fieldset__legend--s" } },
+        items: [
+          { value: "issues", text: "Issues", checked: filters.unit == "issues" },
+          { value: "holdings", text: "Holdings", checked: filters.unit == "holdings" }
+        ]
+      }) }}
+    </div>
+
+    <div class="govuk-button-group">
+      {{ govukButton({ text: "Show these figures", classes: "govuk-button--secondary", attributes: { "data-dashboard-apply": "" } }) }}
+      <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" data-dashboard-copy hidden>
+        Copy link
+      </button>
+      <span class="govuk-body-s app-secondary-text" data-dashboard-copied aria-live="polite"></span>
+    </div>
+  </form>
+
+  <noscript>
+    {{ govukInsetText({ text: "The charts are drawn with JavaScript, which is turned off in this browser. Turn it on to see them." }) }}
+  </noscript>
+
+  {% if status and not status.built %}
+    {{ govukInsetText({ text: "The dashboard's history is being worked out for the first time. Check back in a few minutes." }) }}
+  {% endif %}
+
+  <div class="govuk-tabs app-dashboard__tabs" data-module="govuk-tabs">
+    <h2 class="govuk-tabs__title">Contents</h2>
+    <ul class="govuk-tabs__list">
+      {% for tab in tabs %}
+        <li class="govuk-tabs__list-item{% if tab.id == filters.tab %} govuk-tabs__list-item--selected{% endif %}">
+          <a class="govuk-tabs__tab" href="#{{ tab.id }}">{{ tab.text }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+    {% for tab in tabs %}
+      <div class="govuk-tabs__panel{% if tab.id != filters.tab %} govuk-tabs__panel--hidden{% endif %}" id="{{ tab.id }}">
+        <h2 class="govuk-heading-m">{{ tab.text }}</h2>
+        <div class="app-dashboard__panel" data-dashboard-panel="{{ tab.id }}"></div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script type="application/json" id="app-dashboard-data">{{ embedded | jsonScript }}</script>
+</div>
+
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script type="module" src="{{ getAssetPath('src/client/javascripts/dashboard.js') }}"></script>
+{% endblock %}

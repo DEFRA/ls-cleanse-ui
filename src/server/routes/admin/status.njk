@@ -120,6 +120,46 @@
       {% endif %}
     </p>
 
+    <h2 class="govuk-heading-m" id="dashboard-figures">Dashboard figures</h2>
+    {% if dashboardError %}
+      {{ govukNotificationBanner({ titleText: "Important", text: dashboardError }) }}
+    {% endif %}
+    {% set figures = dashboard.figures %}
+    {% if not figures %}
+      <p class="govuk-body">Unknown, because the backend did not say: {{ dashboard.problem }}</p>
+    {% elif not figures.built %}
+      <p class="govuk-body">
+        Not built yet. The figures are built a short while after the backend starts, and then
+        kept up to date.
+        {% if figures.building %}Building them now.{% endif %}
+      </p>
+    {% else %}
+      <dl class="govuk-summary-list">
+        {{ summaryRow("Up to date at", figures.asAtUtc | govukDateTime,
+          "More than 15 minutes ago, so the latest changes may be missing." if figures.stale) }}
+        {{ summaryRow("Last rebuilt", figures.builtAtUtc | govukDateTime,
+          "Taking " + (figures.durationMilliseconds | default(0)) + " milliseconds, from " + figures.issues + " issues and their history") }}
+        {{ summaryRow("History from", figures.historyFromUtc | govukDateTime if figures.historyFromUtc else "No history yet",
+          "The last reset, or the first rule run if there has been no reset.") }}
+        {{ summaryRow("Last check",
+          "Every issue's history led to its current state" if figures.mismatches == 0
+          else (figures.mismatches + " issues' histories did not lead to their current state, so the figures correct them")) }}
+        {% if figures.building %}
+          {{ summaryRow("Now", "Rebuilding") }}
+        {% endif %}
+      </dl>
+    {% endif %}
+    <form method="post" action="/admin/status/rebuild-dashboard">
+      <input type="hidden" name="crumb" value="{{ crumb }}">
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" data-prevent-double-click="true">
+        Rebuild the dashboard figures
+      </button>
+    </form>
+    <p class="govuk-body-s app-secondary-text">
+      A rebuild works the figures out again from the history. The dashboard keeps showing the old
+      figures until the new ones are ready. <a class="govuk-link" href="/admin/dashboard">Open the dashboard</a>
+    </p>
+
   </div>
 </div>
 

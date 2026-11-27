@@ -21,6 +21,8 @@ export default defineConfig({
       input: {
         htmlAssets: 'src/client/assets.html',
         application: 'src/client/javascripts/application.js',
+        // Only the dashboard loads its charts, so other pages do not get bigger.
+        dashboard: 'src/client/javascripts/dashboard.js',
         applicationCss: 'src/client/stylesheets/application.scss'
       }
     },
