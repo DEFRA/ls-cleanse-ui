@@ -1,0 +1,141 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to SPOL datasets", href: "/admin/datasets" }) }}
+{% endblock %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {% if error %}
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [{ text: error, href: "#process" }]
+      }) }}
+    {% endif %}
+
+    {% if notification %}
+      {{ govukNotificationBanner({ type: "success", titleText: "Success", text: notification }) }}
+    {% endif %}
+
+    <span class="govuk-caption-l">SPOL dataset</span>
+    <h1 class="govuk-heading-l">{{ dataset.name }}</h1>
+
+    <p class="govuk-body">
+      {{ govukTag({ text: dataset.statusDetail.name, classes: "govuk-tag--" + dataset.statusDetail.colour }) }}
+    </p>
+
+    {% if dataset.status == "empty" %}
+      {{ govukInsetText({ text: "Nothing has been loaded yet. Run the SPOL connector with this dataset's id and key." }) }}
+    {% elif dataset.status == "loading" %}
+      {{ govukInsetText({ text: dataset.rows + " rows have arrived. If the connector has stopped, run it again: it starts the load afresh." }) }}
+    {% endif %}
+
+    {% if dataset.isProcessing %}
+      {% set processingHtml %}
+        This dataset is being processed.
+        <a class="govuk-link govuk-link--no-visited-state" href="/admin/imports/{{ dataset.lastProcessing.importJobId }}">See its progress</a>.
+      {% endset %}
+      {{ govukInsetText({ html: processingHtml }) }}
+    {% endif %}
+
+    {% set idHtml %}<code class="app-copyable">{{ dataset.id }}</code>{% endset %}
+    {% set processedHtml %}
+      {% if dataset.lastProcessing %}
+        <a class="govuk-link govuk-link--no-visited-state" href="/admin/imports/{{ dataset.lastProcessing.importJobId }}">{{ dataset.lastProcessing.createdAtUtc | govukDateTime }}</a>
+        ({{ dataset.lastProcessing.statusDetail.name | lower }})
+      {% else %}
+        Not yet
+      {% endif %}
+    {% endset %}
+
+    {{ govukSummaryList({
+      rows: [
+        { key: { text: "Dataset id" }, value: { html: idHtml } },
+        { key: { text: "Rows" }, value: { text: dataset.rows } },
+        { key: { text: "Created by" }, value: { text: dataset.createdBy } },
+        { key: { text: "Created" }, value: { text: dataset.createdAtUtc | govukDateTime } },
+        { key: { text: "Last updated" }, value: { text: dataset.updatedAtUtc | govukDateTime } },
+        { key: { text: "Last loaded" }, value: { text: (dataset.lastLoadedAtUtc | govukDateTime) or "Not yet" } },
+        { key: { text: "Last processed" }, value: { html: processedHtml } }
+      ]
+    }) }}
+
+    {% if dataset.canProcess %}
+      <form method="post" action="/admin/datasets/{{ dataset.id }}/process" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <p class="govuk-body">
+          Processing applies the rows to the matching issues and holdings, adding the people in
+          Assigned to as users first. It takes a few minutes for the whole list.
+        </p>
+        {{ govukButton({ text: "Process", attributes: { id: "process" } }) }}
+      </form>
+    {% endif %}
+
+    <p class="govuk-body">
+      <a class="govuk-link govuk-link--no-visited-state" href="/admin/datasets/{{ dataset.id }}/rename">Rename<span class="govuk-visually-hidden"> {{ dataset.name }}</span></a>
+      {% if not dataset.isProcessing %}
+        &nbsp;|&nbsp;
+        <a class="govuk-link govuk-link--no-visited-state" href="/admin/datasets/{{ dataset.id }}/delete">Delete<span class="govuk-visually-hidden"> {{ dataset.name }}</span></a>
+      {% endif %}
+    </p>
+
+  </div>
+</div>
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-full">
+
+    <h2 class="govuk-heading-m">Processing runs</h2>
+
+    {% if runs | length %}
+      <table class="govuk-table app-table--compact">
+        <caption class="govuk-visually-hidden">This dataset's processing runs, newest first</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Started</th>
+            <th scope="col" class="govuk-table__header">Status</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rows</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Applied</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">No matching issue</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Users added</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for job in runs %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">
+                <a class="govuk-link govuk-link--no-visited-state" href="/admin/imports/{{ job.id }}">{{ job.createdAtUtc | govukDateTime }}</a>
+              </td>
+              <td class="govuk-table__cell">
+                {{ govukTag({ text: job.statusDetail.name, classes: "govuk-tag--" + job.statusDetail.colour }) }}
+                {% if job.status == "processing" %}
+                  <span class="app-secondary-text">{{ job.percentComplete }}%</span>
+                {% endif %}
+              </td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.totalRows }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.matched }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.unmatched }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ job.usersCreated }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">This dataset has not been processed.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

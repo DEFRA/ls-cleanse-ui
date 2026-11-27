@@ -62,7 +62,10 @@ const passThroughMethods = new Set([
   'setCodedValueActive',
   // A number of days.
   'getSettings',
-  'updateSettings'
+  'updateSettings',
+  // Nothing, and a page's counts.
+  'deleteSpolDataset',
+  'loadSpolDatasetPage'
 ])
 
 /** Calls whose body names a holding, by a CPH that may be a fake read off the screen. */
@@ -327,6 +330,9 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
 
   const rejection = (value) => rewrite(value, { detail: hide })
 
+  // A dataset's name is what an admin typed, or when it was made. Its rows are never sent here.
+  const dataset = (value) => rewrite(value, { createdBy: personName })
+
   const user = (value) =>
     rewrite(value, {
       id: userId,
@@ -361,7 +367,12 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
     searchImports: page(importJob),
     getImport: importJob,
     getImportRejections: page(rejection),
-    uploadImport: importJob
+    searchSpolDatasets: page(dataset),
+    getSpolDataset: dataset,
+    createSpolDataset: (value) => rewrite(value, { dataset }),
+    renameSpolDataset: dataset,
+    processSpolDataset: importJob,
+    checkSpolDatasetKey: dataset
   }
 
   /** Turns a fake the user read off the screen back into the value the backend holds. */

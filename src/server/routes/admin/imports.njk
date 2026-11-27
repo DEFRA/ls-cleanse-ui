@@ -1,80 +1,25 @@
 {% extends 'layouts/page.njk' %}
 
-{% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/details/macro.njk" import govukDetails %}
-{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
-{% from "govuk/components/file-upload/macro.njk" import govukFileUpload %}
-{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block backLink %}
+  {{ govukBackLink({ text: "Back to SPOL datasets", href: "/admin/datasets" }) }}
+{% endblock %}
 
 {% block content %}
 
 <div class="govuk-grid-row">
   <div class="govuk-grid-column-two-thirds">
 
-    {% if error %}
-      {{ govukErrorSummary({
-        titleText: "There is a problem",
-        errorList: [{ text: error, href: "#file" }]
-      }) }}
-    {% endif %}
-
-    {% if notification %}
-      {{ govukNotificationBanner({
-        type: "success",
-        titleText: "Success",
-        text: notification
-      }) }}
-    {% endif %}
-
     <span class="govuk-caption-l">{{ groupId }}</span>
     <h1 class="govuk-heading-l">SPOL imports</h1>
 
     <p class="govuk-body">
-      Upload an extract from the SharePoint list to bring the triage state recorded there onto
-      the matching issues. Only the columns are read &mdash; nothing is inferred from the notes.
+      Every time a SPOL dataset has been processed, and the file uploads that came before
+      datasets. To bring SPOL's triage state onto the issues, process a dataset from
+      <a class="govuk-link govuk-link--no-visited-state" href="/admin/datasets">SPOL datasets</a>.
     </p>
-
-    {% set requiredColumnsHtml %}
-      <p class="govuk-body">A CSV with these columns:</p>
-      <ul class="govuk-list govuk-list--bullet">
-        <li><code>CPH</code></li>
-        <li><code>Rule No</code></li>
-        <li><code>Status</code></li>
-        <li><code>Notes</code></li>
-        <li><code>Priority</code></li>
-        <li><code>Date Received</code></li>
-      </ul>
-      <p class="govuk-body">
-        <code>1st</code>, <code>2nd</code> and <code>3rd Contact Date</code> and
-        <code>Letter/email sent</code> are optional, and become case history entries.
-      </p>
-      <p class="govuk-body">
-        <code>Assigned to</code> is optional. Use <strong>Export CSV with schema</strong> in
-        SharePoint, which gives email addresses there rather than names. An address nobody has
-        yet becomes a new user. Once someone changes an issue's assignment in Cleanse, imports no
-        longer change it.
-      </p>
-    {% endset %}
-
-    {{ govukDetails({
-      summaryText: "What the file must contain",
-      html: requiredColumnsHtml
-    }) }}
-
-    <form method="post" enctype="multipart/form-data" novalidate>
-      <input type="hidden" name="crumb" value="{{ crumb }}">
-
-      {{ govukFileUpload({
-        id: "file",
-        name: "file",
-        label: { text: "Upload a SPOL CSV extract", classes: "govuk-label--s" },
-        accept: ".csv,text/csv",
-        errorMessage: { text: error } if error
-      }) }}
-
-      {{ govukButton({ text: "Upload file" }) }}
-    </form>
 
   </div>
 </div>
@@ -89,8 +34,8 @@
         <caption class="govuk-visually-hidden">Recent SPOL imports, newest first</caption>
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
-            <th scope="col" class="govuk-table__header">File</th>
-            <th scope="col" class="govuk-table__header">Uploaded</th>
+            <th scope="col" class="govuk-table__header">Dataset or file</th>
+            <th scope="col" class="govuk-table__header">Started</th>
             <th scope="col" class="govuk-table__header">Status</th>
             <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rows</th>
             <th scope="col" class="govuk-table__header govuk-table__header--numeric">Matched</th>
@@ -121,7 +66,7 @@
         </tbody>
       </table>
     {% else %}
-      <p class="govuk-body">No files have been imported yet.</p>
+      <p class="govuk-body">Nothing has been imported yet.</p>
     {% endif %}
 
   </div>

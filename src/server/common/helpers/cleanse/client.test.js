@@ -22,21 +22,6 @@ function stubFetch(response) {
 const urlOf = (fetchSpy) => new URL(fetchSpy.mock.calls[0][0])
 
 describe('#createCleanseClient query building', () => {
-  test('sends an import as multipart without any directory scope, never a secret', async () => {
-    const fetchSpy = stubFetch(ok({ id: 'import-id' }))
-    const client = createCleanseClient({ auth: { headers: async () => ({}) } })
-    await client.uploadImport({
-      groupId: 'cts-sam',
-      fileName: 'spol.csv',
-      content: Buffer.from('header')
-    })
-    const form = fetchSpy.mock.calls[0][1].body
-    expect(form.get('groupId')).toBe('cts-sam')
-    expect(form.get('file').name).toBe('spol.csv')
-    expect(form.has('tenantId')).toBe(false)
-    expect(form.has('clientId')).toBe(false)
-  })
-
   test('adds users by posting their email addresses', async () => {
     const fetchSpy = stubFetch(ok({ created: [], existing: [] }))
     const client = createCleanseClient({ auth: { headers: async () => ({}) } })
@@ -214,6 +199,87 @@ describe('#createCleanseClient holdings and lists', () => {
     expect(write.method).toBe('PUT')
     expect(JSON.parse(write.body)).toEqual({ minimumIssueAgeDays: 7 })
     expect(write.headers['x-cleanse-user-id']).toBe('user-1')
+  })
+})
+
+describe('#createCleanseClient SPOL datasets', () => {
+  const noAuth = { auth: { headers: async () => ({}) } }
+  const id = '0196a3a4-0000-7000-8000-000000000001'
+
+  test.each([
+    ['createSpolDataset', [{ name: 'Nov' }], 'POST', '/v1/datasets', true],
+    [
+      'processSpolDataset',
+      [id, { groupId: 'cts-sam' }],
+      'POST',
+      `/v1/datasets/${id}/process`,
+      true
+    ],
+    [
+      'renameSpolDataset',
+      [id, { name: 'Nov', expectedVersion: 2 }],
+      'PUT',
+      `/v1/datasets/${id}/name`,
+      false
+    ],
+    ['deleteSpolDataset', [id], 'DELETE', `/v1/datasets/${id}`, false],
+    ['getSpolDataset', [id], 'GET', `/v1/datasets/${id}`, false]
+  ])(
+    'Should send %s to the backend',
+    async (method, args, verb, path, forPerson) => {
+      const fetchSpy = stubFetch(ok({}))
+      const client = createCleanseClient(noAuth).forRequest('trace', {
+        actingUserId: 'user-1'
+      })
+
+      await client[method](...args)
+
+      const [url, options] = fetchSpy.mock.calls[0]
+      expect(new URL(url).pathname).toBe(path)
+      expect(options.method).toBe(verb)
+      expect(options.headers['x-cleanse-user-id']).toBe(
+        forPerson ? 'user-1' : undefined
+      )
+      expect(options.headers).not.toHaveProperty('x-dataset-key')
+    }
+  )
+
+  test("Should send the connector's key on its calls, and its page as it came", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => ok({}))
+    const client = createCleanseClient(noAuth)
+    const page = {
+      loadId: 'load',
+      page: 1,
+      pageCount: 1,
+      totalRows: 1,
+      rows: [{ itemId: 7 }]
+    }
+
+    await client.checkSpolDatasetKey(id, 'cleanse_ds_key')
+    await client.loadSpolDatasetPage(id, 'cleanse_ds_key', page)
+
+    const [checkUrl, check] = fetchSpy.mock.calls[0]
+    const [loadUrl, load] = fetchSpy.mock.calls[1]
+    expect(new URL(checkUrl).pathname).toBe(`/v1/datasets/${id}`)
+    expect(check.method).toBe('GET')
+    expect(check.headers['x-dataset-key']).toBe('cleanse_ds_key')
+    expect(new URL(loadUrl).pathname).toBe(`/v1/datasets/${id}`)
+    expect(load.method).toBe('POST')
+    expect(load.headers['x-dataset-key']).toBe('cleanse_ds_key')
+    expect(JSON.parse(load.body)).toEqual(page)
+  })
+
+  test("Should list a dataset's processing runs", async () => {
+    const fetchSpy = stubFetch(ok({ items: [] }))
+
+    await createCleanseClient(noAuth).searchImports({
+      datasetId: id,
+      pageSize: 20
+    })
+
+    expect(urlOf(fetchSpy).searchParams.get('datasetId')).toBe(id)
   })
 })
 

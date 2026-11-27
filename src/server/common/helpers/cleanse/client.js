@@ -112,7 +112,7 @@ export function createCleanseClient(options = {}) {
   async function send(
     method,
     path,
-    { query, body, form, headers: extra, traceId } = {}
+    { query, body, headers: extra, traceId } = {}
   ) {
     const url = `${baseUrl}${path}${toQuery(query)}`
     const headers = {
@@ -133,9 +133,7 @@ export function createCleanseClient(options = {}) {
       headers[traceHeader] = traceId
     }
 
-    // fetch derives the multipart boundary itself, so content-type must be left unset.
-    const payload =
-      form ?? (body === undefined ? undefined : JSON.stringify(body))
+    const payload = body === undefined ? undefined : JSON.stringify(body)
 
     let response
     try {
@@ -269,12 +267,33 @@ export function createCleanseClient(options = {}) {
       getImportRejections: (id, query) =>
         request('GET', `/v1/imports/${segment(id)}/rejections`, { query }),
 
-      uploadImport: ({ groupId, fileName, content }) => {
-        const form = new FormData()
-        form.append('groupId', groupId)
-        form.append('file', new Blob([content], { type: 'text/csv' }), fileName)
-        return request('POST', '/v1/imports', { form })
-      }
+      searchSpolDatasets: (query) => request('GET', '/v1/datasets', { query }),
+
+      getSpolDataset: (id) => request('GET', `/v1/datasets/${segment(id)}`),
+
+      /** The response carries the dataset's key, which nothing may keep. */
+      createSpolDataset: (body) => change('POST', '/v1/datasets', body),
+
+      renameSpolDataset: (id, body) =>
+        request('PUT', `/v1/datasets/${segment(id)}/name`, { body }),
+
+      deleteSpolDataset: (id) =>
+        request('DELETE', `/v1/datasets/${segment(id)}`),
+
+      processSpolDataset: (id, body) =>
+        change('POST', `/v1/datasets/${segment(id)}/process`, body),
+
+      // The connector's calls, passed on from /api with the key it gave, which no log may carry.
+      checkSpolDatasetKey: (id, key) =>
+        request('GET', `/v1/datasets/${segment(id)}`, {
+          headers: { 'x-dataset-key': key }
+        }),
+
+      loadSpolDatasetPage: (id, key, body) =>
+        request('POST', `/v1/datasets/${segment(id)}`, {
+          body,
+          headers: { 'x-dataset-key': key }
+        })
     }
   }
 

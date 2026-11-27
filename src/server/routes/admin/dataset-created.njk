@@ -1,0 +1,53 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/panel/macro.njk" import govukPanel %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+
+    {{ govukPanel({
+      titleText: "Dataset created",
+      text: dataset.name
+    }) }}
+
+    {{ govukWarningText({
+      text: "Copy the key now. Cleanse keeps only a fingerprint of it, so it won't be shown again. If you lose it, delete this dataset and create another.",
+      iconFallbackText: "Warning"
+    }) }}
+
+    {% set idHtml %}<code class="app-copyable" id="dataset-id">{{ dataset.id }}</code>{% endset %}
+    {% set keyHtml %}<code class="app-copyable" id="dataset-key">{{ datasetKey }}</code>{% endset %}
+
+    {{ govukSummaryList({
+      rows: [
+        { key: { text: "Dataset id" }, value: { html: idHtml } },
+        { key: { text: "Key" }, value: { html: keyHtml } }
+      ]
+    }) }}
+
+    <h2 class="govuk-heading-m">Load the SPOL list into it</h2>
+
+    <p class="govuk-body">
+      On a Windows laptop with Excel and PowerShell 7, open the SPOL connector's folder in
+      PowerShell and run:
+    </p>
+
+    <pre class="app-code-block"><code id="connector-command">{{ command }}</code></pre>
+
+    <p class="govuk-body">
+      Paste the key when the connector asks for it. It exports the list through Excel, then sends
+      it here a page at a time. The dataset is Ready once every row has arrived.
+    </p>
+
+    <p class="govuk-body">
+      <a class="govuk-link govuk-link--no-visited-state" href="/admin/datasets/{{ dataset.id }}">Go to the dataset</a>
+    </p>
+
+  </div>
+</div>
+
+{% endblock %}
