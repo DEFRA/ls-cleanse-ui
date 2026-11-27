@@ -1,4 +1,9 @@
-import { presentIssue, presentEvidence, presentCphGroup } from './presenter.js'
+import {
+  presentIssue,
+  presentEvidence,
+  presentCphGroup,
+  holdingPath
+} from './presenter.js'
 
 const issue = {
   id: '2-JBSWY3DPEHPK3PXP',
@@ -30,7 +35,21 @@ describe('#presentCphGroup', () => {
 
     expect(group.issueCount).toBe(2)
     expect(group.holdingName).toBe('Mount Farm')
+    expect(group.holdingHref).toBe('/holdings/01/036/8000')
     expect(group.issues.map((i) => i.workflowDetail.name)).toHaveLength(2)
+  })
+
+  test('Should describe the holding status the backend worked out', () => {
+    const group = presentCphGroup({
+      cph: '01/036/8000',
+      holdingStatus: 'closed',
+      assignedTo: 'Alice Smith',
+      issues: []
+    })
+
+    expect(group.holdingStatus).toMatchObject({ name: 'Closed' })
+    expect(group.assignedTo).toBe('Alice Smith')
+    expect(presentCphGroup({ cph: '', issues: [] }).holdingHref).toBeNull()
   })
 })
 
@@ -54,28 +73,45 @@ describe('#presentIssue', () => {
     expect(() => presentIssue({ ...issue, context: undefined })).not.toThrow()
   })
 
-  test('Should offer only the moves the backend allows, and never a no-op', () => {
-    const todo = presentIssue(issue).can
-    expect(todo).toMatchObject({
-      resolve: true,
-      suppress: true,
-      ignore: true,
-      reopen: false
-    })
+  test('Should link to the holding page, at the issue, encoding each part of the CPH', () => {
+    expect(presentIssue(issue).href).toBe(
+      '/holdings/01/036/8000#issue-2-JBSWY3DPEHPK3PXP'
+    )
+    expect(holdingPath('C3161 #2')).toBe('/holdings/C3161%20%232')
+    expect(presentIssue({ ...issue, context: {} }).href).toBeNull()
+  })
 
-    const suppressed = presentIssue({
+  test('Should treat only an active To do or In progress issue as open', () => {
+    expect(presentIssue(issue).isOpen).toBe(true)
+    expect(presentIssue({ ...issue, status: 'inactive' }).isOpen).toBe(false)
+    expect(
+      presentIssue({ ...issue, workflowStatus: 'suppressed' }).isOpen
+    ).toBe(false)
+  })
+
+  test("Should show an outcome's reason, and say when Can't resolve has none", () => {
+    const reasoned = presentIssue({
       ...issue,
-      workflowStatus: 'suppressed'
-    }).can
-    // Suppressed cannot be suppressed again, but can be lifted back to To do.
-    expect(suppressed).toMatchObject({ suppress: false, reopen: true })
-
-    const ignored = presentIssue({ ...issue, workflowStatus: 'ignored' }).can
-    expect(ignored).toMatchObject({
-      resolve: false,
-      suppress: false,
-      reopen: true
+      workflowStatus: 'resolved',
+      outcomeReason: 'Fixed in SAM'
     })
+    const unreasoned = presentIssue({
+      ...issue,
+      workflowStatus: 'nonactionable'
+    })
+    const resolved = presentIssue({ ...issue, workflowStatus: 'resolved' })
+
+    expect(reasoned.reason).toBe('Fixed in SAM')
+    expect(unreasoned.reason).toBe('No reason given')
+    expect(unreasoned.workflowDetail.name).toBe("Can't resolve")
+    expect(resolved.reason).toBeNull()
+    expect(presentIssue(issue).reason).toBeNull()
+  })
+
+  test("Should show an issue recorded as Ignored as Can't resolve", () => {
+    expect(
+      presentIssue({ ...issue, workflowStatus: 'ignored' }).workflowDetail.name
+    ).toBe("Can't resolve")
   })
 })
 

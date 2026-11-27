@@ -1,8 +1,31 @@
 import {
   describeIssueStatus,
   describeWorkflowStatus,
-  canMoveTo
+  describeHoldingStatus,
+  outcomeStatuses,
+  openWorkflowStatuses
 } from '#/server/common/constants/workflow.js'
+
+/**
+ * The holding page for a CPH. A CPH has slashes in it, and each part is encoded on its own so
+ * they stay path separators. Issues with no CPH have no holding.
+ */
+export function holdingPath(cph) {
+  return cph
+    ? `/holdings/${String(cph).split('/').map(encodeURIComponent).join('/')}`
+    : null
+}
+
+/** Why an issue has its outcome. Can't resolve always gives one, except where it predates them. */
+function outcomeReasonOf(issue) {
+  if (!outcomeStatuses.includes(issue.workflowStatus)) {
+    return null
+  }
+  if (issue.outcomeReason) {
+    return issue.outcomeReason
+  }
+  return issue.workflowStatus === 'nonactionable' ? 'No reason given' : null
+}
 
 /**
  * Issue ids are opaque digests, so nothing a user reads comes from the id. Everything on screen
@@ -10,6 +33,7 @@ import {
  */
 export function presentIssue(issue) {
   const context = issue.context ?? {}
+  const holding = holdingPath(context.cph)
 
   return {
     ...issue,
@@ -19,17 +43,18 @@ export function presentIssue(issue) {
     errorDescription:
       context.errorDescription ?? `Rule ${context.ruleNumber ?? issue.ruleId}`,
     holdingName: context.samFeatureName,
+    holdingHref: holding,
+    // Opens the holding page at this issue.
+    href: holding ? `${holding}#issue-${issue.id}` : null,
     statusDetail: describeIssueStatus(issue.status),
     workflowDetail: describeWorkflowStatus(issue.workflowStatus),
+    reason: outcomeReasonOf(issue),
     isSuppressed: issue.workflowStatus === 'suppressed',
     isInactive: issue.status === 'inactive',
-    can: {
-      start: canMoveTo(issue.workflowStatus, 'in-progress'),
-      resolve: canMoveTo(issue.workflowStatus, 'resolved'),
-      ignore: canMoveTo(issue.workflowStatus, 'ignored'),
-      suppress: canMoveTo(issue.workflowStatus, 'suppressed'),
-      reopen: canMoveTo(issue.workflowStatus, 'todo')
-    }
+    // Open is what the triage queue works through, and what the holding page selects to start.
+    isOpen:
+      issue.status === 'active' &&
+      openWorkflowStatuses.includes(issue.workflowStatus)
   }
 }
 
@@ -42,6 +67,12 @@ export function presentCphGroup(group) {
     issueCount: group.issueCount,
     latestUpdatedAtUtc: group.latestUpdatedAtUtc,
     holdingName: issues.find((issue) => issue.holdingName)?.holdingName,
+    holdingHref: holdingPath(group.cph),
+    holdingStatus: group.holdingStatus
+      ? describeHoldingStatus(group.holdingStatus)
+      : null,
+    assignedTo: group.assignedTo,
+    suppressedUntilUtc: group.suppressedUntilUtc,
     issues
   }
 }

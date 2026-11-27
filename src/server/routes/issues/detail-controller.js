@@ -1,61 +1,19 @@
-import { presentIssue, presentEvidence } from './presenter.js'
-import { issuesBackLink } from './list-controller.js'
-import { describeWorkflowStatus } from '#/server/common/constants/workflow.js'
-
-const historyActions = {
-  Comment: 'Note added',
-  PhoneCall: 'Phone call',
-  LetterSent: 'Letter or email sent'
-}
-
-export const detailController = {
-  async handler(request, h) {
-    const { id } = request.params
-
-    const [raw, history] = await Promise.all([
-      request.cleanse.getIssue(id),
-      request.cleanse.getIssueHistory(id, { pageSize: 100 })
-    ])
-
-    const issue = presentIssue(raw)
-    const flash = request.yar.flash('notification')
-
-    return h.view('issues/detail', {
-      pageTitle: `${issue.cph ?? 'Issue'} - ${issue.errorDescription}`,
-      issue,
-      evidence: presentEvidence(raw),
-      history: history.items
-        .map((entry) => ({
-          ...entry,
-          actionName: historyActions[entry.actionType] ?? entry.actionType
-        }))
-        .reverse(),
-      notification: flash.length ? flash[0] : null,
-      backLink: issuesBackLink(request.yar.get('lastIssuesQuery'))
-    })
-  }
-}
+import { holdingPath } from './presenter.js'
+import { CleanseApiError } from '#/server/common/helpers/cleanse/client.js'
 
 /**
- * Shared by every action page: fetches the issue, and refuses to render a form for a move the
- * domain would reject anyway.
+ * An issue is worked on its holding's page, so its own address, still in bookmarks and emails,
+ * opens that page at the issue. An issue with no CPH has no holding to open.
  */
-export async function loadForAction(
-  request,
-  h,
-  { target, view, pageTitle, extra = {} }
-) {
-  const issue = presentIssue(await request.cleanse.getIssue(request.params.id))
+export const detailController = {
+  async handler(request, h) {
+    const issue = await request.cleanse.getIssue(request.params.id)
+    const holding = holdingPath(issue.context?.cph)
 
-  if (target && !issue.can[target]) {
-    return h
-      .view('issues/not-allowed', {
-        pageTitle: 'You cannot do that',
-        issue,
-        attempted: describeWorkflowStatus(target).name
-      })
-      .code(409)
+    if (!holding) {
+      throw new CleanseApiError({ status: 404, code: 'holding.not_found' })
+    }
+
+    return h.redirect(`${holding}#issue-${encodeURIComponent(issue.id)}`)
   }
-
-  return h.view(view, { pageTitle, issue, ...extra })
 }

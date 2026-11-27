@@ -42,8 +42,9 @@ export const performResetController = {
 
       request.yar.flash(
         'notification',
-        `Deleted ${result.issues} issues, ${result.auditEntries} audit entries, ` +
-          `${result.ruleRuns} runs and ${result.importJobs} imports from '${result.scope}'.`
+        `Deleted ${result.issues} issues, ${result.holdings ?? 0} holdings, ` +
+          `${result.auditEntries} audit entries, ${result.ruleRuns} runs and ` +
+          `${result.importJobs} imports from '${result.scope}'.`
       )
 
       return h.redirect('/admin/status')

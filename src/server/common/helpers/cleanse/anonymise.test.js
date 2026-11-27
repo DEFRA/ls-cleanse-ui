@@ -37,21 +37,42 @@ const realIssue = {
   version: 3
 }
 
-const realHistory = {
-  items: [
+const realHolding = {
+  groupId: 'cts-sam',
+  cph: '12/345/6789',
+  status: 'todo',
+  assignedTo: 'Real Assignee',
+  assignedUserId: 'a1b2c3d4-0000-4000-8000-000000000001',
+  assignedUserFullName: 'Real Assignee',
+  version: 2,
+  issues: [realIssue],
+  notes: [
     {
-      id: 'h1',
-      issueId: 'ISSUEID',
-      actionType: 'Comment',
-      comments: 'Spoke to Mr Realname on 07700 900123',
+      id: 'n1',
+      text: 'Spoke to Mr Realname on 07700 900123',
+      context: 'Recorded: Phoned the keeper',
       createdAtUtc: '2026-01-03T00:00:00Z',
       createdById: 'real.person@defra.gov.uk',
       createdByDisplayName: 'Real Person'
     }
   ],
-  totalCount: 1,
-  pageNumber: 1,
-  pageSize: 100
+  history: [
+    {
+      kind: 'actions-recorded',
+      atUtc: '2026-01-03T00:00:00Z',
+      actorId: 'real.person@defra.gov.uk',
+      actorDisplayName: 'Real Person',
+      actions: ['Phoned the keeper']
+    },
+    {
+      kind: 'assignment-changed',
+      atUtc: '2026-01-02T00:00:00Z',
+      actorId: 'real.person@defra.gov.uk',
+      actorDisplayName: 'Real Person',
+      assignedTo: 'Real Assignee',
+      actions: []
+    }
+  ]
 }
 
 const realValues = [
@@ -91,7 +112,13 @@ describe('#createAnonymiser', () => {
       searchIssues: vi
         .fn()
         .mockResolvedValue({ items: [realIssue], totalCount: 1 }),
-      assignUser: vi.fn().mockResolvedValue(realIssue)
+      assignHolding: vi.fn().mockResolvedValue({
+        cph: realIssue.context.cph,
+        assignedTo: real.fullName,
+        assignedUserId: real.id,
+        assignedUserFullName: real.fullName,
+        version: 1
+      })
     }
     const wrapped = anonymiseClient(
       { forRequest: () => calls },
@@ -108,20 +135,44 @@ describe('#createAnonymiser', () => {
     const registered = await wrapped.registerUsers({ emails: [real.email] })
     expect(registered.created[0]).toEqual(fake)
     expect(registered.existing[0]).toEqual(fake)
-    await wrapped.assignUser('ISSUEID', { userId: fake.id, expectedVersion: 3 })
-    expect(calls.assignUser).toHaveBeenCalledWith('ISSUEID', {
-      userId: real.id,
-      expectedVersion: 3
+    const shown = (await wrapped.searchIssues({})).items[0]
+    const assigned = await wrapped.assignHolding({
+      groupId: 'cts-sam',
+      cph: shown.context.cph,
+      userId: fake.id,
+      expectedVersion: 0
     })
+    expect(calls.assignHolding).toHaveBeenCalledWith({
+      groupId: 'cts-sam',
+      cph: realIssue.context.cph,
+      userId: real.id,
+      expectedVersion: 0
+    })
+    expectNoRealValues(JSON.stringify(assigned))
+    expect(assigned.assignedUserId).toBe(fake.id)
     await wrapped.searchIssues({
       assignedUserId: fake.id,
       unassigned: undefined
     })
-    expect(calls.searchIssues).toHaveBeenCalledWith({
+    expect(calls.searchIssues).toHaveBeenLastCalledWith({
       assignedUserId: real.id,
       unassigned: undefined,
       searchTerm: undefined
     })
+  })
+
+  test('Should name the real person behind a fake signed-in id, and nobody it cannot map back', async () => {
+    const anonymiser = createAnonymiser(key)
+    const real = { id: crypto.randomUUID(), fullName: 'Real Person' }
+    const fake = anonymiser.responses.recordLogin(real)
+    const forRequest = vi.fn(() => ({}))
+    const client = anonymiseClient({ forRequest }, anonymiser)
+
+    client.forRequest('trace', { actingUserId: () => fake.id })
+    client.forRequest('trace', { actingUserId: crypto.randomUUID() })
+
+    expect(forRequest.mock.calls[1][1].actingUserId()).toBe(real.id)
+    expect(forRequest.mock.calls[2][1].actingUserId()).toBeUndefined()
   })
   test('Should refuse to start without a key', () => {
     expect(() => createAnonymiser('')).toThrow(/DEMO_ANONYMISE_KEY/)
@@ -202,12 +253,25 @@ describe('#createAnonymiser', () => {
     expect(context.samSomethingNew).toMatch(/^[A-Z][a-z]{8} \d{2}$/)
   })
 
-  test('Should anonymise history, runs and imports', () => {
+  test('Should anonymise holdings, runs and imports', () => {
     const { responses } = createAnonymiser(key)
 
-    const history = responses.getIssueHistory(realHistory)
-    expectNoRealValues(JSON.stringify(history))
-    expect(history.items[0].actionType).toBe('Comment')
+    const holding = responses.getHolding(realHolding)
+    expectNoRealValues(JSON.stringify(holding))
+    expect(holding.notes[0].context).toBe('Recorded: Phoned the keeper')
+    expect(holding.history[0].actions).toEqual(['Phoned the keeper'])
+    expect(holding.cph).toBe(holding.issues[0].context.cph)
+    expectNoRealValues(
+      JSON.stringify(responses.addHoldingNote(realHolding.notes[0]))
+    )
+    expectNoRealValues(
+      JSON.stringify(
+        responses.updateHoldingIssues({
+          issues: [realIssue],
+          note: realHolding.notes[0]
+        })
+      )
+    )
 
     expect(
       responses.getRun({ runId: 'r1', failureMessage: 'Bad CPH 12/345/6789' })
@@ -319,7 +383,15 @@ describe('#demo anonymisation end to end', () => {
 
   beforeEach(() => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-      const body = String(url).includes('/history') ? realHistory : realIssue
+      const path = new URL(url).pathname
+      const body =
+        path === '/v1/holdings'
+          ? realHolding
+          : path === '/v1/users'
+            ? { items: [], totalCount: 0 }
+            : path.startsWith('/v1/lists/')
+              ? []
+              : realIssue
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { 'content-type': 'application/json' }
@@ -331,10 +403,21 @@ describe('#demo anonymisation end to end', () => {
     vi.restoreAllMocks()
   })
 
-  test('Should render the issue page without any real value', async () => {
-    const response = await server.inject({
+  test('Should open the holding page from an issue without any real value', async () => {
+    const redirect = await server.inject({
       method: 'GET',
       url: '/issues/ISSUEID',
+      auth: signedIn
+    })
+    expect(redirect.statusCode).toBe(302)
+    expect(redirect.headers.location).toMatch(
+      /^\/holdings\/12\/\d{3}\/\d{4}#issue-ISSUEID$/
+    )
+    expectNoRealValues(redirect.headers.location)
+
+    const response = await server.inject({
+      method: 'GET',
+      url: redirect.headers.location.split('#')[0],
       auth: signedIn
     })
 
@@ -342,5 +425,11 @@ describe('#demo anonymisation end to end', () => {
     expectNoRealValues(response.payload)
     expect(response.payload).toMatch(/CPH 12\/\d{3}\/\d{4}/)
     expect(response.payload).toContain('Bedfordshire')
+
+    // The backend is asked for the holding the fake CPH stands for.
+    const asked = globalThis.fetch.mock.calls
+      .map(([url]) => new URL(url))
+      .find((url) => url.pathname === '/v1/holdings')
+    expect(asked.searchParams.get('cph')).toBe('12/345/6789')
   })
 })

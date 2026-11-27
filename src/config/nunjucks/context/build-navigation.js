@@ -17,7 +17,8 @@ export function buildNavigation(request) {
     {
       text: 'Issues',
       href: '/issues',
-      current: path.startsWith('/issues')
+      // A holding is where its issues are worked, so it sits under Issues.
+      current: path.startsWith('/issues') || path.startsWith('/holdings/')
     },
     {
       text: 'Sign out',

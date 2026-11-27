@@ -41,7 +41,7 @@
   display: inline-flex;
   align-items: center;
   gap: govuk.govuk-spacing(2);
-  margin: 0;
+  margin: 0 govuk.govuk-spacing(2) 0 0;
   padding: 0;
   border: 0;
   background: none;
@@ -176,26 +176,40 @@
   }
 }
 
-// Activity log. The rule is the spine of the timeline, the markers sit on it.
-.app-timeline {
-  margin: 0;
-  padding-left: govuk.govuk-spacing(5);
-  border-left: 2px solid govuk.govuk-colour("black", $variant: "tint-80");
+// The holding page. Each issue is a card the caseworker can select; the forms beside and below
+// the issues sit in panels so it is clear which button goes with which fields.
+.app-issue-card {
+  margin-bottom: govuk.govuk-spacing(4);
+  padding: govuk.govuk-spacing(3);
+  border: 1px solid govuk.govuk-colour("black", $variant: "tint-80");
+  border-left: 5px solid govuk.govuk-colour("blue");
+
+  &:target {
+    border-left-color: govuk.govuk-colour("yellow");
+  }
 }
 
-.app-timeline__item {
-  position: relative;
-  margin-bottom: govuk.govuk-spacing(5);
+.app-issue-card__title {
+  @include govuk.govuk-font($size: 19, $weight: bold);
+}
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 6px;
-    left: calc(#{govuk.govuk-spacing(5)} * -1 - 7px);
-    width: 12px;
-    height: 12px;
-    border: 2px solid govuk.govuk-colour("white");
-    border-radius: 50%;
-    background-color: govuk.govuk-colour("blue");
-  }
+.app-panel {
+  margin-bottom: govuk.govuk-spacing(6);
+  padding: govuk.govuk-spacing(3);
+  background-color: govuk.govuk-colour("black", $variant: "tint-95");
+}
+
+.app-notes {
+  margin-top: govuk.govuk-spacing(4);
+}
+
+.app-notes__item {
+  margin-bottom: govuk.govuk-spacing(3);
+  padding-bottom: govuk.govuk-spacing(3);
+  border-bottom: 1px solid govuk.govuk-colour("black", $variant: "tint-80");
+}
+
+// A note is written as typed, line breaks included.
+.app-notes__text {
+  white-space: pre-line;
 }

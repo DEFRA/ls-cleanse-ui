@@ -9,10 +9,14 @@ that detects discrepancies between the two systems and records each one as an is
 is where caseworkers work through those issues:
 
 - Sign in with Microsoft Entra ID.
-- Browse the issues list, with filters and paging, and open an issue to see its details, history
-  and audit trail.
-- Act on an issue: assign it, add notes, record a case action, suppress it for a period, resolve,
-  ignore or reopen it.
+- Browse the issues list, with filters and paging, or group it by CPH to see each holding's status
+  and assignee.
+- Work a holding on one page: see all its issues with their CTS and SAM evidence, move the selected
+  issues to a new status in one step (with a reason for Resolved or Can't resolve, or a period for
+  suppression), assign the holding, record what was done, and add notes. Its history shows who did
+  what, newest first.
+- Admins keep the lists the holding page offers: action types, Resolved reasons and Can't resolve
+  reasons.
 
 It is built with Node.js, Hapi and GOV.UK Frontend from the CDP Node.js frontend template. It holds
 no data of its own: everything is read from and written to `ls-cleanse-api`.

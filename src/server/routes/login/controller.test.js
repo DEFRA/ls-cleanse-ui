@@ -267,7 +267,7 @@ describe('#safeNext', () => {
     '/issues',
     '/issues?status=todo&page=2',
     '/admin/login?next=%2Fadmin%2Fstatus',
-    '/issues/2-JBSWY3DPEHPK3PXP/suppress'
+    '/holdings/01/036/8000'
   ])('Should go on to %s', (next) => {
     expect(safeNext(next, '/fallback')).toBe(next)
   })

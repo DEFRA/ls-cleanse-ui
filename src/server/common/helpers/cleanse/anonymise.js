@@ -55,7 +55,18 @@ const passThroughMethods = new Set([
   'getGroups',
   'getRules',
   'getDiagnostics',
-  'reset'
+  'reset',
+  // Entries an admin types, such as "Phoned the keeper": things done, never people.
+  'listCodedValues',
+  'addCodedValue',
+  'setCodedValueActive'
+])
+
+/** Calls whose body names a holding, by a CPH that may be a fake read off the screen. */
+const holdingWrites = new Set([
+  'addHoldingNote',
+  'recordHoldingActions',
+  'updateHoldingIssues'
 ])
 
 const isBlank = (value) => value === undefined || value === null || value === ''
@@ -266,14 +277,35 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
   const cphGroup = (value) =>
     rewrite(value, {
       cph: fakeCph,
+      assignedTo: personName,
+      assignedUserId: userId,
       issues: (list) => (Array.isArray(list) ? list.map(issue) : list)
     })
 
-  const historyEntry = (value) =>
+  const holdingNote = (value) =>
     rewrite(value, {
-      comments: note,
+      text: note,
       createdById: personId,
       createdByDisplayName: personName
+    })
+
+  // An event's detail is the SPOL column a contact came from, and its actions are type names.
+  const holdingEvent = (value) =>
+    rewrite(value, {
+      actorId: personId,
+      actorDisplayName: personName,
+      assignedTo: personName
+    })
+
+  const holding = (value) =>
+    rewrite(value, {
+      cph: fakeCph,
+      assignedTo: personName,
+      assignedUserId: userId,
+      assignedUserFullName: personName,
+      issues: (list) => (Array.isArray(list) ? list.map(issue) : list),
+      notes: (list) => (Array.isArray(list) ? list.map(holdingNote) : list),
+      history: (list) => (Array.isArray(list) ? list.map(holdingEvent) : list)
     })
 
   const run = (value) =>
@@ -307,17 +339,19 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
     registerUsers: (value) =>
       rewrite(value, { created: users, existing: users }),
     searchUsers: page(user),
-    assignUser: issue,
     getGroupSummary: (value) => rewrite(value, { latestRun: run }),
     searchIssues: page(issue),
     searchIssuesByCph: page(cphGroup),
     getIssue: issue,
-    getIssueHistory: page(historyEntry),
-    setWorkflowStatus: issue,
-    setNotes: issue,
-    suppress: issue,
-    unsuppress: issue,
-    addHistory: historyEntry,
+    getHolding: holding,
+    assignHolding: holding,
+    addHoldingNote: holdingNote,
+    recordHoldingActions: (value) => rewrite(value, { note: holdingNote }),
+    updateHoldingIssues: (value) =>
+      rewrite(value, {
+        issues: (list) => (Array.isArray(list) ? list.map(issue) : list),
+        note: holdingNote
+      }),
     searchRuns: page(run),
     getRun: run,
     triggerRun: run,
@@ -335,7 +369,17 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
     return remembered.get(String(term).trim().toLowerCase()) ?? term
   }
 
-  return { responses, realSearchTerm, fakeCph, context }
+  /**
+   * The real value behind a fake this process handed out, or undefined. For an id that must name
+   * a real record, where passing the fake on would only be refused.
+   */
+  function realValue(term) {
+    return isBlank(term)
+      ? undefined
+      : remembered.get(String(term).trim().toLowerCase())
+  }
+
+  return { responses, realSearchTerm, realValue, fakeCph, context }
 }
 
 /**
@@ -366,13 +410,26 @@ export function anonymiseClient(client, anonymiser) {
         )
     }
 
-    if (name === 'assignUser') {
-      return async (id, body) =>
+    if (name === 'getHolding') {
+      return async (groupId, cph) =>
+        transform(await method(groupId, anonymiser.realSearchTerm(cph)))
+    }
+
+    if (name === 'assignHolding') {
+      return async (body) =>
         transform(
-          await method(id, {
+          await method({
             ...body,
+            cph: anonymiser.realSearchTerm(body.cph),
             userId: anonymiser.realSearchTerm(body.userId)
           })
+        )
+    }
+
+    if (holdingWrites.has(name)) {
+      return async (body) =>
+        transform(
+          await method({ ...body, cph: anonymiser.realSearchTerm(body.cph) })
         )
     }
 
@@ -387,8 +444,20 @@ export function anonymiseClient(client, anonymiser) {
       ])
     )
 
+  // The session holds the fake id the anonymised sign-in returned. One this process cannot map
+  // back, after a restart say, is left off, so the change is recorded against the service.
+  const realActingUser = (actingUserId) => () =>
+    anonymiser.realValue(
+      typeof actingUserId === 'function' ? actingUserId() : actingUserId
+    )
+
   return {
-    forRequest: (traceId) => wrap(client.forRequest(traceId)),
+    forRequest: (traceId, { actingUserId } = {}) =>
+      wrap(
+        client.forRequest(traceId, {
+          actingUserId: realActingUser(actingUserId)
+        })
+      ),
     ...wrap(client.forRequest(undefined))
   }
 }

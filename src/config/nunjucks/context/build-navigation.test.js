@@ -42,17 +42,18 @@ describe('#buildNavigation', () => {
     ])
   })
 
-  test('Should highlight Issues for any page beneath it', () => {
-    const navigation = buildNavigation(
-      signedInRequest({ path: '/issues/2-ABCDEFGH/suppress' })
-    )
+  test.each(['/issues/2-ABCDEFGH', '/holdings/01/036/8000'])(
+    'Should highlight Issues for %s',
+    (path) => {
+      const navigation = buildNavigation(signedInRequest({ path }))
 
-    expect(navigation[1]).toEqual({
-      current: true,
-      text: 'Issues',
-      href: '/issues'
-    })
-  })
+      expect(navigation[1]).toEqual({
+        current: true,
+        text: 'Issues',
+        href: '/issues'
+      })
+    }
+  )
 
   test('Should cope with a request that has no path', () => {
     expect(buildNavigation(signedInRequest())).toEqual([

@@ -128,8 +128,8 @@ describe('#auth', () => {
     test('Should send a form submission to sign in without remembering it', async () => {
       const { statusCode, headers } = await server.inject({
         method: 'POST',
-        url: '/issues/2-JBSWY3DPEHPK3PXP/start',
-        payload: { expectedVersion: '4' }
+        url: '/holdings/01/036/8000',
+        payload: { form: 'note', text: 'Rang the keeper' }
       })
 
       expect(statusCode).toBe(statusCodes.found)
@@ -183,13 +183,19 @@ describe('#auth', () => {
       expect(result).toContain('href="/logout"')
     })
 
-    test('Should still ask for the admin password before the admin area', async () => {
+    test.each([
+      '/admin/status',
+      '/admin/action-types',
+      '/admin/outcome-reasons'
+    ])('Should still ask for the admin password before %s', async (url) => {
       const browser = await signedInBrowser()
 
-      const { statusCode, headers } = await browser.get('/admin/status')
+      const { statusCode, headers } = await browser.get(url)
 
       expect(statusCode).toBe(statusCodes.found)
-      expect(headers.location).toBe('/admin/login?next=%2Fadmin%2Fstatus')
+      expect(headers.location).toBe(
+        `/admin/login?next=${encodeURIComponent(url)}`
+      )
       expect(globalThis.fetch).not.toHaveBeenCalled()
     })
 
